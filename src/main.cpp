@@ -18,10 +18,11 @@ int fireMode = 2;
 int flickerSpeed = 30;
 int maxBrightness = 255;
 
-byte brightness[NUM_LEDS];
+float brightness[NUM_LEDS];
 byte targetBrightness[NUM_LEDS];
 
 unsigned long lastUpdate = 0;
+#define UPDATE_INTERVAL 10  // фиксированный интервал обновления (мс)
 
 void setup() {
   Serial.begin(115200);
@@ -30,7 +31,7 @@ void setup() {
   FastLED.setBrightness(maxBrightness);
   
   for (int i = 0; i < NUM_LEDS; i++) {
-    brightness[i] = random8();
+    brightness[i] = (float)random8();
     targetBrightness[i] = random8();
   }
   
@@ -65,25 +66,31 @@ void setup() {
 
 void loop() {
   server.handleClient();
-  
-  if (millis() - lastUpdate > (unsigned long)(flickerSpeed / 3)) {
+
+  if (millis() - lastUpdate > UPDATE_INTERVAL) {
     lastUpdate = millis();
     updateFire();
   }
 }
 
 void updateFire() {
+  // Скорость изменения: чем меньше flickerSpeed, тем быстрее
+  // Множитель для режима: Embers ещё медленнее
+  float modeMultiplier = (fireMode == 1) ? 3.0 : (fireMode == 2) ? 1.5 : 1.0;
+  float step = 255.0 / (flickerSpeed * 10 * modeMultiplier);
+
   for (int i = 0; i < NUM_LEDS; i++) {
-    if (brightness[i] < targetBrightness[i]) {
-      brightness[i]++;
-    } else if (brightness[i] > targetBrightness[i]) {
-      brightness[i]--;
+    if (brightness[i] < targetBrightness[i] - step) {
+      brightness[i] += step;
+    } else if (brightness[i] > targetBrightness[i] + step) {
+      brightness[i] -= step;
     } else {
+      brightness[i] = targetBrightness[i];
       targetBrightness[i] = getTargetBrightness();
     }
-    leds[i] = getFireColor(brightness[i]);
+    leds[i] = getFireColor((byte)brightness[i]);
   }
-  
+
   FastLED.setBrightness(maxBrightness);
   FastLED.show();
 }
