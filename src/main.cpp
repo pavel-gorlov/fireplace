@@ -16,6 +16,7 @@
 
 void handleRoot();
 void handleSet();
+void handleWiFiReset();
 void updateFire();
 byte getTargetBrightness();
 CRGB getFireColor(byte bright);
@@ -74,6 +75,7 @@ void setup() {
   
   server.on("/", handleRoot);
   server.on("/set", handleSet);
+  server.on("/wifi", handleWiFiReset);
   server.begin();
 }
 
@@ -168,12 +170,14 @@ void handleRoot() {
   html += "<div class='box'>Brightness: <span id='bv'>" + String(maxBrightness) + "</span><br>";
   html += "<input type='range' id='br' min='10' max='255' value='" + String(maxBrightness) + "' oninput='bv.innerText=this.value' onchange='send()'></div>";
 
+  html += "<div class='box' style='text-align:center'><a href='/wifi' style='color:#ff6600'>WiFi Settings</a></div>";
+
   html += "<script>var m=" + String(fireMode) + ";";
   html += "var presets={1:{s:70,b:70},2:{s:30,b:150},3:{s:5,b:255}};";
   html += "function setMode(n){m=n;sp.value=presets[n].s;br.value=presets[n].b;sv.innerText=presets[n].s;bv.innerText=presets[n].b;upd();send();}";
   html += "function upd(){document.querySelectorAll('.btn').forEach(function(b,i){b.className='btn'+(i+1==m?' on':'')});}";
   html += "function send(){fetch('/set?mode='+m+'&speed='+sp.value+'&bright='+br.value);}</script>";
-  
+
   html += "</body></html>";
   
   server.send(200, "text/html", html);
@@ -185,6 +189,14 @@ void handleSet() {
   if (server.hasArg("bright")) maxBrightness = constrain(server.arg("bright").toInt(), 10, 255);
   saveSettings();
   server.send(200, "text/plain", "OK");
+}
+
+void handleWiFiReset() {
+  server.send(200, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='font-family:Arial;background:#1a1a1a;color:#fff;padding:20px;text-align:center'><h2 style='color:#ff6600'>WiFi Reset</h2><p>Device will restart in AP mode.</p><p>Connect to <b>Fireplace-Setup</b> to configure new WiFi.</p></body></html>");
+  delay(1000);
+  WiFiManager wm;
+  wm.resetSettings();
+  ESP.restart();
 }
 
 void loadSettings() {
