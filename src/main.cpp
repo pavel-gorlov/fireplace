@@ -3,13 +3,24 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>
+#include <EEPROM.h>
 #define PIN 0
+
+// EEPROM addresses
+#define EEPROM_SIZE 16
+#define ADDR_MAGIC 0      // 1 byte - маркер валидности данных
+#define ADDR_MODE 1       // 1 byte
+#define ADDR_SPEED 2      // 1 byte
+#define ADDR_BRIGHTNESS 3 // 1 byte
+#define MAGIC_VALUE 0x42  // маркер что данные записаны
 
 void handleRoot();
 void handleSet();
 void updateFire();
 byte getTargetBrightness();
 CRGB getFireColor(byte bright);
+void loadSettings();
+void saveSettings();
 
 CRGB leds[NUM_LEDS];
 ESP8266WebServer server(80);
@@ -26,7 +37,9 @@ unsigned long lastUpdate = 0;
 
 void setup() {
   Serial.begin(115200);
-  
+
+  loadSettings();
+
   FastLED.addLeds<WS2811, PIN, GRB>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(maxBrightness);
   
@@ -118,9 +131,9 @@ CRGB getFireColor(byte bright) {
     sat = 255;
     val = map(bright, 0, 255, 30, 220);
   } else {
-    // Flame: красный -> жёлтый
-    hue = map(bright, 0, 255, 0, 45);
-    sat = random8(200, 255);
+    // Flame: красный -> оранжево-жёлтый
+    hue = map(bright, 0, 255, 0, 35);
+    sat = 255;
     val = map(bright, 0, 255, 80, 255);
   }
 
@@ -156,7 +169,7 @@ void handleRoot() {
   html += "<input type='range' id='br' min='10' max='255' value='" + String(maxBrightness) + "' oninput='bv.innerText=this.value' onchange='send()'></div>";
 
   html += "<script>var m=" + String(fireMode) + ";";
-  html += "var presets={1:{s:100,b:70},2:{s:50,b:150},3:{s:5,b:255}};";
+  html += "var presets={1:{s:70,b:70},2:{s:30,b:150},3:{s:5,b:255}};";
   html += "function setMode(n){m=n;sp.value=presets[n].s;br.value=presets[n].b;sv.innerText=presets[n].s;bv.innerText=presets[n].b;upd();send();}";
   html += "function upd(){document.querySelectorAll('.btn').forEach(function(b,i){b.className='btn'+(i+1==m?' on':'')});}";
   html += "function send(){fetch('/set?mode='+m+'&speed='+sp.value+'&bright='+br.value);}</script>";
@@ -170,5 +183,26 @@ void handleSet() {
   if (server.hasArg("mode")) fireMode = constrain(server.arg("mode").toInt(), 1, 3);
   if (server.hasArg("speed")) flickerSpeed = constrain(server.arg("speed").toInt(), 5, 100);
   if (server.hasArg("bright")) maxBrightness = constrain(server.arg("bright").toInt(), 10, 255);
+  saveSettings();
   server.send(200, "text/plain", "OK");
+}
+
+void loadSettings() {
+  EEPROM.begin(EEPROM_SIZE);
+  if (EEPROM.read(ADDR_MAGIC) == MAGIC_VALUE) {
+    fireMode = constrain(EEPROM.read(ADDR_MODE), 1, 3);
+    flickerSpeed = constrain(EEPROM.read(ADDR_SPEED), 5, 100);
+    maxBrightness = constrain(EEPROM.read(ADDR_BRIGHTNESS), 10, 255);
+    Serial.println("Settings loaded from EEPROM");
+  } else {
+    Serial.println("No saved settings, using defaults");
+  }
+}
+
+void saveSettings() {
+  EEPROM.write(ADDR_MAGIC, MAGIC_VALUE);
+  EEPROM.write(ADDR_MODE, fireMode);
+  EEPROM.write(ADDR_SPEED, flickerSpeed);
+  EEPROM.write(ADDR_BRIGHTNESS, maxBrightness);
+  EEPROM.commit();
 }
