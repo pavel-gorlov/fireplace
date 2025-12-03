@@ -137,9 +137,9 @@ void handleRoot() {
   html += "<h2 style='color:#ff6600;text-align:center'>Fireplace</h2>";
   
   html += "<div class='box'><div class='btns'>";
-  html += "<button class='btn" + String(fireMode==1?" on":"") + "' onclick='m=1;upd();send()'>Embers</button>";
-  html += "<button class='btn" + String(fireMode==2?" on":"") + "' onclick='m=2;upd();send()'>Fire</button>";
-  html += "<button class='btn" + String(fireMode==3?" on":"") + "' onclick='m=3;upd();send()'>Flame</button>";
+  html += "<button class='btn" + String(fireMode==1?" on":"") + "' onclick='setMode(1)'>Embers</button>";
+  html += "<button class='btn" + String(fireMode==2?" on":"") + "' onclick='setMode(2)'>Fire</button>";
+  html += "<button class='btn" + String(fireMode==3?" on":"") + "' onclick='setMode(3)'>Flame</button>";
   html += "</div></div>";
 
   html += "<div class='box'>Update interval: <span id='sv'>" + String(flickerSpeed) + "</span> ms<br>";
@@ -149,6 +149,8 @@ void handleRoot() {
   html += "<input type='range' id='br' min='10' max='255' value='" + String(maxBrightness) + "' oninput='bv.innerText=this.value' onchange='send()'></div>";
 
   html += "<script>var m=" + String(fireMode) + ";";
+  html += "var presets={1:{s:100,b:70},2:{s:50,b:150},3:{s:5,b:255}};";
+  html += "function setMode(n){m=n;sp.value=presets[n].s;br.value=presets[n].b;sv.innerText=presets[n].s;bv.innerText=presets[n].b;upd();send();}";
   html += "function upd(){document.querySelectorAll('.btn').forEach(function(b,i){b.className='btn'+(i+1==m?' on':'')});}";
   html += "function send(){fetch('/set?mode='+m+'&speed='+sp.value+'&bright='+br.value);}</script>";
   
