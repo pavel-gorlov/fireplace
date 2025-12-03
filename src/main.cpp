@@ -34,6 +34,7 @@ int maxBrightness = 255;
 
 float brightness[NUM_LEDS];
 byte targetBrightness[NUM_LEDS];
+byte rainbowHue = 0;  // смещение для радуги
 
 unsigned long lastUpdate = 0;
 #define UPDATE_INTERVAL 10  // фиксированный интервал обновления (мс)
@@ -93,6 +94,17 @@ void loop() {
 }
 
 void updateFire() {
+  // Rainbow режим — отдельная логика
+  if (fireMode == 5) {
+    rainbowHue += map(flickerSpeed, 100, 5, 1, 5);  // чем меньше interval, тем быстрее (в 2 раза медленнее)
+    for (int i = 0; i < NUM_LEDS; i++) {
+      leds[i] = CHSV(rainbowHue + (i * 256 / NUM_LEDS), 255, 255);
+    }
+    FastLED.setBrightness(maxBrightness);
+    FastLED.show();
+    return;
+  }
+
   // Скорость изменения: чем меньше flickerSpeed, тем быстрее
   // Множитель для режима: Embers ещё медленнее
   float modeMultiplier = (fireMode == 1) ? 3.0 : (fireMode == 2) ? 1.5 : 1.0;
@@ -120,6 +132,7 @@ byte getTargetBrightness() {
     case 2: return random8(40, 200);   // Fire: средний огонь
     case 3: return random8(30, 255);   // Flame: от углей до яркого пламени
     case 4: return random8(30, 255);   // Ice: ледяное пламя
+    case 5: return 255;                // Rainbow: полная яркость
     default: return random8(40, 200);
   }
 }
@@ -169,10 +182,11 @@ void handleRoot() {
   html += "<h2 style='color:#ff6600;text-align:center'>Fireplace</h2>";
   
   html += "<div class='box'><div class='btns'>";
-  html += "<button class='btn" + String(fireMode==1?" on":"") + "' onclick='setMode(1)'>Embers</button>";
-  html += "<button class='btn" + String(fireMode==2?" on":"") + "' onclick='setMode(2)'>Fire</button>";
-  html += "<button class='btn" + String(fireMode==3?" on":"") + "' onclick='setMode(3)'>Flame</button>";
+  html += "<button class='btn" + String(fireMode==1?" on":"") + "' onclick='setMode(1)' style='background:" + String(fireMode==1?"#aa2200":"#522") + "'>Embers</button>";
+  html += "<button class='btn" + String(fireMode==2?" on":"") + "' onclick='setMode(2)' style='background:" + String(fireMode==2?"#ff6600":"#633") + "'>Fire</button>";
+  html += "<button class='btn" + String(fireMode==3?" on":"") + "' onclick='setMode(3)' style='background:" + String(fireMode==3?"#ff9922":"#653") + "'>Flame</button>";
   html += "<button class='btn" + String(fireMode==4?" on":"") + "' onclick='setMode(4)' style='background:" + String(fireMode==4?"#0099ff":"#446") + "'>Ice</button>";
+  html += "<button class='btn" + String(fireMode==5?" on":"") + "' onclick='setMode(5)' style='background:" + String(fireMode==5?"linear-gradient(90deg,red,orange,yellow,green,blue,violet)":"linear-gradient(90deg,#633,#663,#363,#336,#636)") + "'>Rainbow</button>";
   html += "</div></div>";
 
   html += "<div class='box'>Update interval: <span id='sv'>" + String(flickerSpeed) + "</span> ms<br>";
@@ -184,7 +198,7 @@ void handleRoot() {
   html += "<div class='box' style='text-align:center'><a href='/wifi' style='color:#ff6600'>WiFi Settings</a></div>";
 
   html += "<script>var m=" + String(fireMode) + ";";
-  html += "var presets={1:{s:70,b:70},2:{s:30,b:150},3:{s:5,b:255},4:{s:10,b:200}};";
+  html += "var presets={1:{s:70,b:70},2:{s:30,b:150},3:{s:5,b:255},4:{s:10,b:200},5:{s:20,b:255}};";
   html += "function setMode(n){m=n;sp.value=presets[n].s;br.value=presets[n].b;sv.innerText=presets[n].s;bv.innerText=presets[n].b;upd();send();}";
   html += "function upd(){document.querySelectorAll('.btn').forEach(function(b,i){b.className='btn'+(i+1==m?' on':'')});}";
   html += "function send(){fetch('/set?mode='+m+'&speed='+sp.value+'&bright='+br.value);}</script>";
@@ -195,7 +209,7 @@ void handleRoot() {
 }
 
 void handleSet() {
-  if (server.hasArg("mode")) fireMode = constrain(server.arg("mode").toInt(), 1, 4);
+  if (server.hasArg("mode")) fireMode = constrain(server.arg("mode").toInt(), 1, 5);
   if (server.hasArg("speed")) flickerSpeed = constrain(server.arg("speed").toInt(), 5, 100);
   if (server.hasArg("bright")) maxBrightness = constrain(server.arg("bright").toInt(), 10, 255);
   saveSettings();
