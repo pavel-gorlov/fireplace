@@ -2,6 +2,7 @@
 #include "FastLED.h"
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#include <WiFiManager.h>
 #define PIN 0
 
 void handleRoot();
@@ -33,11 +34,29 @@ void setup() {
     targetBrightness[i] = random8();
   }
   
-  WiFi.softAP("Fireplace", "12345678");
+  // WiFiManager - автоматически создаёт точку доступа при первом запуске
+  WiFiManager wm;
+
+  // Раскомментируй для сброса настроек WiFi при каждом запуске (для отладки)
+  // wm.resetSettings();
+
+  // Таймаут портала настройки (секунды). 0 = без таймаута
+  wm.setConfigPortalTimeout(180);
+
   Serial.println();
-  Serial.println("WiFi: Fireplace / 12345678");
-  Serial.print("Open: http://");
-  Serial.println(WiFi.softAPIP());
+  Serial.println("Connecting to WiFi...");
+
+  // autoConnect создаёт AP "Fireplace-Setup" если нет сохранённых данных
+  // После ввода credentials перезагружается и подключается к WiFi
+  if (!wm.autoConnect("Fireplace-Setup", "12345678")) {
+    Serial.println("Failed to connect, restarting...");
+    delay(3000);
+    ESP.restart();
+  }
+
+  Serial.println("WiFi connected!");
+  Serial.print("IP: ");
+  Serial.println(WiFi.localIP());
   
   server.on("/", handleRoot);
   server.on("/set", handleSet);
