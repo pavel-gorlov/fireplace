@@ -90,30 +90,33 @@ void updateFire() {
 
 byte getTargetBrightness() {
   switch (fireMode) {
-    case 1: return random8(20, 120);
-    case 2: return random8(60, 200);
-    case 3: return random8(100, 255);
-    default: return random8(60, 200);
+    case 1: return random8(20, 120);   // Embers: тусклые угли
+    case 2: return random8(40, 200);   // Fire: средний огонь
+    case 3: return random8(30, 255);   // Flame: от углей до яркого пламени
+    default: return random8(40, 200);
   }
 }
 
 CRGB getFireColor(byte bright) {
   byte hue, sat, val;
-  
+
   if (fireMode == 1) {
-    hue = random8(0, 20);
+    // Embers: красный -> тёмно-оранжевый
+    hue = map(bright, 0, 255, 0, 20);
     sat = 255;
     val = map(bright, 0, 255, 10, 150);
   } else if (fireMode == 2) {
+    // Fire: красный -> оранжевый
     hue = map(bright, 0, 255, 0, 32);
     sat = 255;
     val = map(bright, 0, 255, 30, 220);
   } else {
+    // Flame: красный -> жёлтый
     hue = map(bright, 0, 255, 0, 45);
     sat = random8(200, 255);
     val = map(bright, 0, 255, 80, 255);
   }
-  
+
   return CHSV(hue, sat, val);
 }
 
@@ -129,28 +132,25 @@ void handleRoot() {
   html += ".btns{display:flex;gap:10px}";
   html += ".btn{flex:1;padding:12px;border:none;border-radius:8px;background:#444;color:#fff}";
   html += ".btn.on{background:#ff6600}";
-  html += ".go{background:#ff6600;color:#fff;width:100%;padding:12px;border:none;border-radius:8px;margin-top:10px}";
-  html += "</style></head><body>";
+    html += "</style></head><body>";
   
   html += "<h2 style='color:#ff6600;text-align:center'>Fireplace</h2>";
   
   html += "<div class='box'><div class='btns'>";
-  html += "<button class='btn" + String(fireMode==1?" on":"") + "' onclick='m=1;upd()'>Embers</button>";
-  html += "<button class='btn" + String(fireMode==2?" on":"") + "' onclick='m=2;upd()'>Fire</button>";
-  html += "<button class='btn" + String(fireMode==3?" on":"") + "' onclick='m=3;upd()'>Flame</button>";
+  html += "<button class='btn" + String(fireMode==1?" on":"") + "' onclick='m=1;upd();send()'>Embers</button>";
+  html += "<button class='btn" + String(fireMode==2?" on":"") + "' onclick='m=2;upd();send()'>Fire</button>";
+  html += "<button class='btn" + String(fireMode==3?" on":"") + "' onclick='m=3;upd();send()'>Flame</button>";
   html += "</div></div>";
-  
-  html += "<div class='box'>Speed: <span id='sv'>" + String(flickerSpeed) + "</span><br>";
-  html += "<input type='range' id='sp' min='5' max='100' value='" + String(flickerSpeed) + "' oninput='sv.innerText=this.value'></div>";
-  
+
+  html += "<div class='box'>Update interval: <span id='sv'>" + String(flickerSpeed) + "</span> ms<br>";
+  html += "<input type='range' id='sp' min='5' max='100' value='" + String(flickerSpeed) + "' oninput='sv.innerText=this.value' onchange='send()'></div>";
+
   html += "<div class='box'>Brightness: <span id='bv'>" + String(maxBrightness) + "</span><br>";
-  html += "<input type='range' id='br' min='10' max='255' value='" + String(maxBrightness) + "' oninput='bv.innerText=this.value'></div>";
-  
-  html += "<button class='go' onclick='send()'>Apply</button>";
-  
+  html += "<input type='range' id='br' min='10' max='255' value='" + String(maxBrightness) + "' oninput='bv.innerText=this.value' onchange='send()'></div>";
+
   html += "<script>var m=" + String(fireMode) + ";";
   html += "function upd(){document.querySelectorAll('.btn').forEach(function(b,i){b.className='btn'+(i+1==m?' on':'')});}";
-  html += "function send(){fetch('/set?mode='+m+'&speed='+sp.value+'&bright='+br.value).then(function(){location.reload();});}</script>";
+  html += "function send(){fetch('/set?mode='+m+'&speed='+sp.value+'&bright='+br.value);}</script>";
   
   html += "</body></html>";
   
