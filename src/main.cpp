@@ -4,6 +4,12 @@
 #include <ESP8266WebServer.h>
 #define PIN 0
 
+void handleRoot();
+void handleSet();
+void updateFire();
+byte getTargetBrightness();
+CRGB getFireColor(byte bright);
+
 CRGB leds[NUM_LEDS];
 ESP8266WebServer server(80);
 
