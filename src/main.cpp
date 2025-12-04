@@ -1,4 +1,5 @@
-#define NUM_LEDS 144
+#define MAX_LEDS 300
+#define DEFAULT_NUM_LEDS 144
 #include "FastLED.h"
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
@@ -12,10 +13,13 @@
 #define ADDR_MODE 1       // 1 byte
 #define ADDR_SPEED 2      // 1 byte
 #define ADDR_BRIGHTNESS 3 // 1 byte
+#define ADDR_NUM_LEDS_L 4 // 1 byte - младший байт количества LED
+#define ADDR_NUM_LEDS_H 5 // 1 byte - старший байт количества LED
 #define MAGIC_VALUE 0x42  // маркер что данные записаны
 
 void handleRoot();
 void handleSet();
+void handleSetLeds();
 void handleWiFi();
 void handleWiFiConnect();
 void handleWiFiScan();
@@ -25,15 +29,16 @@ CRGB getFireColor(byte bright);
 void loadSettings();
 void saveSettings();
 
-CRGB leds[NUM_LEDS];
+CRGB leds[MAX_LEDS];
 ESP8266WebServer server(80);
 
+int numLeds = DEFAULT_NUM_LEDS;
 int fireMode = 2;
 int flickerSpeed = 30;
 int maxBrightness = 255;
 
-float brightness[NUM_LEDS];
-byte targetBrightness[NUM_LEDS];
+float brightness[MAX_LEDS];
+byte targetBrightness[MAX_LEDS];
 byte rainbowHue = 0;  // смещение для радуги
 
 unsigned long lastUpdate = 0;
@@ -44,10 +49,10 @@ void setup() {
 
   loadSettings();
 
-  FastLED.addLeds<WS2811, PIN, GRB>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+  FastLED.addLeds<WS2811, PIN, GRB>(leds, numLeds).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(maxBrightness);
-  
-  for (int i = 0; i < NUM_LEDS; i++) {
+
+  for (int i = 0; i < numLeds; i++) {
     brightness[i] = (float)random8();
     targetBrightness[i] = random8();
   }
@@ -78,6 +83,7 @@ void setup() {
   
   server.on("/", handleRoot);
   server.on("/set", handleSet);
+  server.on("/setleds", handleSetLeds);
   server.on("/wifi", handleWiFi);
   server.on("/wifi/scan", handleWiFiScan);
   server.on("/wifi/connect", handleWiFiConnect);
@@ -97,8 +103,8 @@ void updateFire() {
   // Rainbow режим — отдельная логика
   if (fireMode == 5) {
     rainbowHue += map(flickerSpeed, 100, 5, 1, 5);  // чем меньше interval, тем быстрее (в 2 раза медленнее)
-    for (int i = 0; i < NUM_LEDS; i++) {
-      leds[i] = CHSV(rainbowHue + (i * 256 / NUM_LEDS), 255, 255);
+    for (int i = 0; i < numLeds; i++) {
+      leds[i] = CHSV(rainbowHue + (i * 256 / numLeds), 255, 255);
     }
     FastLED.setBrightness(maxBrightness);
     FastLED.show();
@@ -110,7 +116,7 @@ void updateFire() {
   float modeMultiplier = (fireMode == 1) ? 3.0 : (fireMode == 2) ? 1.5 : 1.0;
   float step = 255.0 / (flickerSpeed * 10 * modeMultiplier);
 
-  for (int i = 0; i < NUM_LEDS; i++) {
+  for (int i = 0; i < numLeds; i++) {
     if (brightness[i] < targetBrightness[i] - step) {
       brightness[i] += step;
     } else if (brightness[i] > targetBrightness[i] + step) {
@@ -179,7 +185,7 @@ void handleRoot() {
   html += ".btn.on{background:#ff6600}";
     html += "</style></head><body>";
   
-  html += "<h2 style='color:#ff6600;text-align:center'>Fireplace</h2>";
+  html += "<h2 style='color:#ff6600;text-align:center;cursor:pointer' onclick='document.getElementById(\"adv\").style.display=document.getElementById(\"adv\").style.display==\"none\"?\"block\":\"none\"'>Fireplace</h2>";
   
   html += "<div class='box'><div class='btns'>";
   html += "<button class='btn" + String(fireMode==1?" on":"") + "' onclick='setMode(1)' style='background:" + String(fireMode==1?"#aa2200":"#522") + "'>Embers</button>";
@@ -197,11 +203,17 @@ void handleRoot() {
 
   html += "<div class='box' style='text-align:center'><a href='/wifi' style='color:#ff6600'>WiFi Settings</a></div>";
 
+  html += "<div id='adv' class='box' style='display:none'>LED count: <span id='lv'>" + String(numLeds) + "</span><br>";
+  html += "<input type='range' id='leds' min='1' max='300' value='" + String(numLeds) + "' oninput='lv.innerText=this.value'>";
+  html += "<button class='btn' style='background:#ff6600;margin-top:10px' onclick='setLeds()'>Apply & Restart</button></div>";
+
   html += "<script>var m=" + String(fireMode) + ";";
   html += "var presets={1:{s:70,b:70},2:{s:30,b:150},3:{s:5,b:255},4:{s:10,b:200},5:{s:20,b:255}};";
+  html += "var colors={1:['#aa2200','#522'],2:['#ff6600','#633'],3:['#ff9922','#653'],4:['#0099ff','#446'],5:['linear-gradient(90deg,red,orange,yellow,green,blue,violet)','linear-gradient(90deg,#633,#663,#363,#336,#636)']};";
   html += "function setMode(n){m=n;sp.value=presets[n].s;br.value=presets[n].b;sv.innerText=presets[n].s;bv.innerText=presets[n].b;upd();send();}";
-  html += "function upd(){document.querySelectorAll('.btn').forEach(function(b,i){b.className='btn'+(i+1==m?' on':'')});}";
-  html += "function send(){fetch('/set?mode='+m+'&speed='+sp.value+'&bright='+br.value);}</script>";
+  html += "function upd(){document.querySelectorAll('.btns .btn').forEach(function(b,i){var n=i+1;b.className='btn'+(n==m?' on':'');b.style.background=colors[n][n==m?0:1];});}";
+  html += "function send(){fetch('/set?mode='+m+'&speed='+sp.value+'&bright='+br.value);}";
+  html += "function setLeds(){fetch('/setleds?n='+document.getElementById('leds').value).then(()=>location.reload());}</script>";
 
   html += "</body></html>";
   
@@ -214,6 +226,18 @@ void handleSet() {
   if (server.hasArg("bright")) maxBrightness = constrain(server.arg("bright").toInt(), 10, 255);
   saveSettings();
   server.send(200, "text/plain", "OK");
+}
+
+void handleSetLeds() {
+  if (server.hasArg("n")) {
+    numLeds = constrain(server.arg("n").toInt(), 1, MAX_LEDS);
+    saveSettings();
+    server.send(200, "text/plain", "OK");
+    delay(500);
+    ESP.restart();
+  } else {
+    server.send(400, "text/plain", "Missing parameter");
+  }
 }
 
 void handleWiFi() {
@@ -291,9 +315,13 @@ void handleWiFiConnect() {
 void loadSettings() {
   EEPROM.begin(EEPROM_SIZE);
   if (EEPROM.read(ADDR_MAGIC) == MAGIC_VALUE) {
-    fireMode = constrain(EEPROM.read(ADDR_MODE), 1, 3);
+    fireMode = constrain(EEPROM.read(ADDR_MODE), 1, 5);
     flickerSpeed = constrain(EEPROM.read(ADDR_SPEED), 5, 100);
     maxBrightness = constrain(EEPROM.read(ADDR_BRIGHTNESS), 10, 255);
+    int savedLeds = EEPROM.read(ADDR_NUM_LEDS_L) | (EEPROM.read(ADDR_NUM_LEDS_H) << 8);
+    if (savedLeds >= 1 && savedLeds <= MAX_LEDS) {
+      numLeds = savedLeds;
+    }
     Serial.println("Settings loaded from EEPROM");
   } else {
     Serial.println("No saved settings, using defaults");
@@ -305,5 +333,7 @@ void saveSettings() {
   EEPROM.write(ADDR_MODE, fireMode);
   EEPROM.write(ADDR_SPEED, flickerSpeed);
   EEPROM.write(ADDR_BRIGHTNESS, maxBrightness);
+  EEPROM.write(ADDR_NUM_LEDS_L, numLeds & 0xFF);
+  EEPROM.write(ADDR_NUM_LEDS_H, (numLeds >> 8) & 0xFF);
   EEPROM.commit();
 }
