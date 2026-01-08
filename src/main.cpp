@@ -1,16 +1,29 @@
-// === КОНФИГУРАЦИЯ LED ===
-#define LED_MATRIX 1       // 1 = матрица 8x8, 0 = лента
+// === КОНФИГУРАЦИЯ ===
+// Эти значения можно переопределить через build_flags в platformio.ini
+#ifndef LED_MATRIX
+  #define LED_MATRIX 1     // 1 = матрица 8x8, 0 = лента
+#endif
+#ifndef HAS_OLED
+  #define HAS_OLED 1       // 1 = есть OLED дисплей
+#endif
+#ifndef HAS_BUTTON
+  #define HAS_BUTTON 1     // 1 = есть кнопка
+#endif
+
 #define LED_PIN 0          // GPIO0 = D3
 
-// === КНОПКА ===
-#define BTN_PIN 13         // GPIO13 = D7
+#if HAS_BUTTON
+  #define BTN_PIN 13       // GPIO13 = D7
+#endif
 
 #if LED_MATRIX
   #define DEFAULT_NUM_LEDS 64
   #define LED_TYPE WS2812
+  #define LED_COLOR_ORDER GRB
 #else
   #define DEFAULT_NUM_LEDS 144
   #define LED_TYPE WS2811
+  #define LED_COLOR_ORDER GRB    // как в старой рабочей версии
 #endif
 
 #define MAX_LEDS 300
@@ -19,13 +32,14 @@
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>
 #include <EEPROM.h>
-#include <Wire.h>
-#include <SSD1306Wire.h>
-
-// OLED дисплей 128x64 на I2C (HW-364A: SDA=GPIO14/D5, SCL=GPIO12/D6)
-#define OLED_SDA 14
-#define OLED_SCL 12
-SSD1306Wire display(0x3C, OLED_SDA, OLED_SCL);
+#if HAS_OLED
+  #include <Wire.h>
+  #include <SSD1306Wire.h>
+  // OLED дисплей 128x64 на I2C (HW-364A: SDA=GPIO14/D5, SCL=GPIO12/D6)
+  #define OLED_SDA 14
+  #define OLED_SCL 12
+  SSD1306Wire display(0x3C, OLED_SDA, OLED_SCL);
+#endif
 
 // EEPROM addresses
 #define EEPROM_SIZE 16
@@ -55,26 +69,30 @@ void saveSettings();
 void updateDisplay();
 void handleButton();
 
-// Переменные для кнопки
-unsigned long btnPressTime = 0;       // время нажатия
-unsigned long lastClickTime = 0;      // время последнего клика
-unsigned long lastAdjustTime = 0;     // время последней корректировки
-bool lastBtnState = HIGH;
-bool adjustingBrightness = false;     // режим регулировки яркости
-bool adjustingSpeed = false;          // режим регулировки скорости
-int brightDirection = 1;              // направление яркости: 1 = вверх, -1 = вниз
-int speedDirection = -1;              // направление скорости: -1 = быстрее, 1 = медленнее
-int clickCount = 0;                   // счётчик кликов
-bool wasAdjusting = false;            // флаг что была регулировка (не менять режим)
-#define BTN_DEBOUNCE 50               // мс
-#define HOLD_THRESHOLD 400            // мс до начала регулировки
-#define ADJUST_INTERVAL 50            // мс между шагами (медленнее)
-#define DOUBLE_CLICK_TIME 300         // мс между кликами
+#if HAS_BUTTON
+  // Переменные для кнопки
+  unsigned long btnPressTime = 0;       // время нажатия
+  unsigned long lastClickTime = 0;      // время последнего клика
+  unsigned long lastAdjustTime = 0;     // время последней корректировки
+  bool lastBtnState = HIGH;
+  bool adjustingBrightness = false;     // режим регулировки яркости
+  bool adjustingSpeed = false;          // режим регулировки скорости
+  int brightDirection = 1;              // направление яркости: 1 = вверх, -1 = вниз
+  int speedDirection = -1;              // направление скорости: -1 = быстрее, 1 = медленнее
+  int clickCount = 0;                   // счётчик кликов
+  bool wasAdjusting = false;            // флаг что была регулировка (не менять режим)
+  #define BTN_DEBOUNCE 50               // мс
+  #define HOLD_THRESHOLD 400            // мс до начала регулировки
+  #define ADJUST_INTERVAL 50            // мс между шагами (медленнее)
+  #define DOUBLE_CLICK_TIME 300         // мс между кликами
+#endif
 
-// Засыпание экрана
-unsigned long lastActivityTime = 0;   // время последней активности
-bool screenOn = true;                 // экран включён
-#define SCREEN_TIMEOUT 30000          // мс до засыпания (30 сек)
+#if HAS_OLED
+  // Засыпание экрана
+  unsigned long lastActivityTime = 0;   // время последней активности
+  bool screenOn = true;                 // экран включён
+  #define SCREEN_TIMEOUT 30000          // мс до засыпания (30 сек)
+#endif
 
 // Названия режимов
 const char* modeNames[] = {"", "Embers", "Fire", "Flame", "Ice", "Rainbow", "Firework", "Storm", "Rain", "Tree"};
@@ -123,32 +141,34 @@ float leafBright[64];         // текущая яркость
 byte leafTargetBright[64];    // целевая яркость
 byte leafHue[64];             // текущий оттенок зелёного
 
-// Иконка песочных часов 12x12
-const uint8_t icon_hourglass[] PROGMEM = {
-  0xFE, 0x07, 0xFE, 0x07, 0x04, 0x02, 0x88, 0x01,
-  0xD0, 0x00, 0x60, 0x00, 0x60, 0x00, 0xD0, 0x00,
-  0x88, 0x01, 0x04, 0x02, 0xFE, 0x07, 0xFE, 0x07
-};
+#if HAS_OLED
+  // Иконка песочных часов 12x12
+  const uint8_t icon_hourglass[] PROGMEM = {
+    0xFE, 0x07, 0xFE, 0x07, 0x04, 0x02, 0x88, 0x01,
+    0xD0, 0x00, 0x60, 0x00, 0x60, 0x00, 0xD0, 0x00,
+    0x88, 0x01, 0x04, 0x02, 0xFE, 0x07, 0xFE, 0x07
+  };
 
-// Иконка солнца 16x16: маленький круг 4x4, лучи 1px по сторонам и диагоналям
-const uint8_t icon_sun[] PROGMEM = {
-  0x80, 0x00,  // верхний луч
-  0x84, 0x10,  // диагонали + луч
-  0x88, 0x08,  // диагонали + луч
-  0x10, 0x04,  // диагонали
-  0x00, 0x00,
-  0xC0, 0x03,  // круг 4x4
-  0xC0, 0x03,
-  0xC7, 0xE3,  // круг + боковые лучи
-  0xC0, 0x03,
-  0xC0, 0x03,  // круг 4x4
-  0x00, 0x00,
-  0x10, 0x04,  // диагонали
-  0x88, 0x08,  // диагонали + луч
-  0x84, 0x10,  // диагонали + луч
-  0x80, 0x00,  // нижний луч
-  0x00, 0x00
-};
+  // Иконка солнца 16x16: маленький круг 4x4, лучи 1px по сторонам и диагоналям
+  const uint8_t icon_sun[] PROGMEM = {
+    0x80, 0x00,  // верхний луч
+    0x84, 0x10,  // диагонали + луч
+    0x88, 0x08,  // диагонали + луч
+    0x10, 0x04,  // диагонали
+    0x00, 0x00,
+    0xC0, 0x03,  // круг 4x4
+    0xC0, 0x03,
+    0xC7, 0xE3,  // круг + боковые лучи
+    0xC0, 0x03,
+    0xC0, 0x03,  // круг 4x4
+    0x00, 0x00,
+    0x10, 0x04,  // диагонали
+    0x88, 0x08,  // диагонали + луч
+    0x84, 0x10,  // диагонали + луч
+    0x80, 0x00,  // нижний луч
+    0x00, 0x00
+  };
+#endif
 
 CRGB leds[MAX_LEDS];
 ESP8266WebServer server(80);
@@ -168,21 +188,33 @@ unsigned long lastUpdate = 0;
 void setup() {
   Serial.begin(115200);
 
-  // Инициализация кнопки
-  pinMode(BTN_PIN, INPUT_PULLUP);
+  #if HAS_BUTTON
+    pinMode(BTN_PIN, INPUT_PULLUP);
+  #endif
 
-  // Инициализация OLED
-  display.init();
-  display.flipScreenVertically();
-  display.setFont(ArialMT_Plain_16);
-  display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.clear();
-  display.drawString(64, 24, "Connecting...");
-  display.display();
+  #if HAS_OLED
+    display.init();
+    display.flipScreenVertically();
+    display.setFont(ArialMT_Plain_16);
+    display.setTextAlignment(TEXT_ALIGN_CENTER);
+    display.clear();
+    display.drawString(64, 24, "Connecting...");
+    display.display();
+  #endif
 
   loadSettings();
 
-  FastLED.addLeds<LED_TYPE, LED_PIN, GRB>(leds, numLeds).setCorrection(TypicalLEDStrip);
+  // Отладка: показываем конфигурацию
+  Serial.print("LED config: ");
+  #if LED_MATRIX
+    Serial.println("MATRIX 8x8, WS2812, GRB");
+  #else
+    Serial.println("STRIP 144, WS2811, GRB");
+  #endif
+  Serial.print("numLeds: ");
+  Serial.println(numLeds);
+
+  FastLED.addLeds<LED_TYPE, LED_PIN, LED_COLOR_ORDER>(leds, numLeds).setCorrection(TypicalLEDStrip);
 
   // Тест LED при старте - красная вспышка
   fill_solid(leds, numLeds, CRGB::Red);
@@ -222,7 +254,9 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   updateDisplay();
-  lastActivityTime = millis();  // Запуск таймера засыпания экрана
+  #if HAS_OLED
+    lastActivityTime = millis();  // Запуск таймера засыпания экрана
+  #endif
 
   server.on("/", handleRoot);
   server.on("/set", handleSet);
@@ -235,14 +269,18 @@ void setup() {
 
 void loop() {
   server.handleClient();
-  handleButton();
+  #if HAS_BUTTON
+    handleButton();
+  #endif
 
-  // Засыпание экрана по таймауту
-  if (screenOn && millis() - lastActivityTime > SCREEN_TIMEOUT) {
-    display.displayOff();
-    screenOn = false;
-    Serial.println("Screen off");
-  }
+  #if HAS_OLED
+    // Засыпание экрана по таймауту
+    if (screenOn && millis() - lastActivityTime > SCREEN_TIMEOUT) {
+      display.displayOff();
+      screenOn = false;
+      Serial.println("Screen off");
+    }
+  #endif
 
   if (millis() - lastUpdate > UPDATE_INTERVAL) {
     lastUpdate = millis();
@@ -806,6 +844,7 @@ void saveSettings() {
   EEPROM.commit();
 }
 
+#if HAS_OLED
 void updateDisplay() {
   display.clear();
 
@@ -833,25 +872,32 @@ void updateDisplay() {
 
   display.display();
 }
+#else
+void updateDisplay() {
+  // Без OLED - ничего не делаем
+}
+#endif
 
+#if HAS_BUTTON
 void handleButton() {
   bool btnState = digitalRead(BTN_PIN);
   unsigned long now = millis();
 
   // Нажатие кнопки (HIGH -> LOW)
   if (btnState == LOW && lastBtnState == HIGH) {
-    // Если экран выключен - просто включаем его и выходим
-    if (!screenOn) {
-      display.displayOn();
-      screenOn = true;
+    #if HAS_OLED
+      // Если экран выключен - просто включаем его и выходим
+      if (!screenOn) {
+        display.displayOn();
+        screenOn = true;
+        lastActivityTime = now;
+        lastBtnState = btnState;
+        Serial.println("Screen wake up");
+        return;
+      }
+      // Сброс таймера засыпания при активности
       lastActivityTime = now;
-      lastBtnState = btnState;
-      Serial.println("Screen wake up");
-      return;
-    }
-
-    // Сброс таймера засыпания при активности
-    lastActivityTime = now;
+    #endif
 
     btnPressTime = now;
     wasAdjusting = false;
@@ -969,3 +1015,8 @@ void handleButton() {
 
   lastBtnState = btnState;
 }
+#else
+void handleButton() {
+  // Без кнопки - ничего не делаем
+}
+#endif

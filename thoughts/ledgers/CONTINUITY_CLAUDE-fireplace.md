@@ -48,7 +48,7 @@ Success criteria:
 - **Config**: `platformio.ini`
 - **Build**: `~/.platformio/penv/bin/pio run`
 - **Upload**: `pio run -t upload`
-- **Current version**: v0.3.5
+- **Current version**: v0.3.6
 - **Branch**: master
 
 ## Open Questions
