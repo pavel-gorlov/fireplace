@@ -2,6 +2,9 @@
 #define LED_MATRIX 1       // 1 = матрица 8x8, 0 = лента
 #define LED_PIN 0          // GPIO0 = D3
 
+// === КНОПКА ===
+#define BTN_PIN 13         // GPIO13 = D7
+
 #if LED_MATRIX
   #define DEFAULT_NUM_LEDS 64
   #define LED_TYPE WS2812
@@ -46,6 +49,23 @@ CRGB getFireColor(byte bright);
 void loadSettings();
 void saveSettings();
 void updateDisplay();
+void handleButton();
+
+// Переменные для кнопки
+unsigned long btnPressTime = 0;       // время нажатия
+unsigned long lastClickTime = 0;      // время последнего клика
+unsigned long lastAdjustTime = 0;     // время последней корректировки
+bool lastBtnState = HIGH;
+bool adjustingBrightness = false;     // режим регулировки яркости
+bool adjustingSpeed = false;          // режим регулировки скорости
+int brightDirection = 1;              // направление яркости: 1 = вверх, -1 = вниз
+int speedDirection = -1;              // направление скорости: -1 = быстрее, 1 = медленнее
+int clickCount = 0;                   // счётчик кликов
+bool wasAdjusting = false;            // флаг что была регулировка (не менять режим)
+#define BTN_DEBOUNCE 50               // мс
+#define HOLD_THRESHOLD 400            // мс до начала регулировки
+#define ADJUST_INTERVAL 50            // мс между шагами (медленнее)
+#define DOUBLE_CLICK_TIME 300         // мс между кликами
 
 // Названия режимов
 const char* modeNames[] = {"", "Embers", "Fire", "Flame", "Ice", "Rainbow"};
@@ -94,6 +114,9 @@ unsigned long lastUpdate = 0;
 
 void setup() {
   Serial.begin(115200);
+
+  // Инициализация кнопки
+  pinMode(BTN_PIN, INPUT_PULLUP);
 
   // Инициализация OLED
   display.init();
@@ -158,6 +181,7 @@ void setup() {
 
 void loop() {
   server.handleClient();
+  handleButton();
 
   if (millis() - lastUpdate > UPDATE_INTERVAL) {
     lastUpdate = millis();
@@ -431,4 +455,122 @@ void updateDisplay() {
   display.drawXbm(112, 48, 16, 16, icon_sun);
 
   display.display();
+}
+
+void handleButton() {
+  bool btnState = digitalRead(BTN_PIN);
+  unsigned long now = millis();
+
+  // Нажатие кнопки (HIGH -> LOW)
+  if (btnState == LOW && lastBtnState == HIGH) {
+    btnPressTime = now;
+    wasAdjusting = false;
+
+    // Проверяем двойной клик
+    if (now - lastClickTime < DOUBLE_CLICK_TIME) {
+      clickCount = 2;
+    } else {
+      clickCount = 1;
+    }
+    lastClickTime = now;
+  }
+
+  // Кнопка удерживается
+  if (btnState == LOW) {
+    unsigned long holdTime = now - btnPressTime;
+
+    // Начало регулировки после удержания
+    if (holdTime > HOLD_THRESHOLD) {
+      if (clickCount == 1 && !adjustingBrightness) {
+        adjustingBrightness = true;
+        wasAdjusting = true;
+        lastClickTime = 0;  // сброс чтобы не менялся режим
+        Serial.println("Adjusting brightness...");
+      } else if (clickCount == 2 && !adjustingSpeed) {
+        adjustingSpeed = true;
+        wasAdjusting = true;
+        lastClickTime = 0;
+        Serial.println("Adjusting speed...");
+      }
+
+      // Плавная регулировка
+      if (now - lastAdjustTime > ADJUST_INTERVAL) {
+        lastAdjustTime = now;
+
+        if (adjustingBrightness) {
+          int newBright = maxBrightness + brightDirection * 3;
+          if (newBright >= 255) {
+            maxBrightness = 255;
+            // Останавливаемся на максимуме, направление сменим при следующем удержании
+          } else if (newBright <= 10) {
+            maxBrightness = 10;
+            // Останавливаемся на минимуме
+          } else {
+            maxBrightness = newBright;
+          }
+          FastLED.setBrightness(maxBrightness);
+          FastLED.show();
+          updateDisplay();
+        }
+
+        if (adjustingSpeed) {
+          int newSpeed = flickerSpeed + speedDirection * 1;
+          if (newSpeed >= 100) {
+            flickerSpeed = 100;
+          } else if (newSpeed <= 5) {
+            flickerSpeed = 5;
+          } else {
+            flickerSpeed = newSpeed;
+          }
+          updateDisplay();
+        }
+      }
+    }
+  }
+
+  // Отпускание кнопки (LOW -> HIGH)
+  if (btnState == HIGH && lastBtnState == LOW) {
+    if (adjustingBrightness) {
+      // Меняем направление для следующего раза
+      if (maxBrightness >= 255) brightDirection = -1;
+      else if (maxBrightness <= 10) brightDirection = 1;
+      else brightDirection = -brightDirection;  // инвертируем
+
+      saveSettings();
+      adjustingBrightness = false;
+      Serial.print("Brightness saved: ");
+      Serial.println(maxBrightness);
+    }
+
+    if (adjustingSpeed) {
+      // Меняем направление для следующего раза
+      if (flickerSpeed >= 100) speedDirection = -1;
+      else if (flickerSpeed <= 5) speedDirection = 1;
+      else speedDirection = -speedDirection;
+
+      saveSettings();
+      adjustingSpeed = false;
+      Serial.print("Speed saved: ");
+      Serial.println(flickerSpeed);
+    }
+
+    clickCount = 0;
+  }
+
+  // Обработка одиночного клика (смена режима)
+  if (btnState == HIGH && !wasAdjusting) {
+    if (lastClickTime > 0 && now - lastClickTime > DOUBLE_CLICK_TIME) {
+      fireMode++;
+      if (fireMode > 5) fireMode = 1;
+
+      saveSettings();
+      updateDisplay();
+      Serial.print("Mode: ");
+      Serial.println(modeNames[fireMode]);
+
+      lastClickTime = 0;
+    }
+  }
+
+  lastBtnState = btnState;
 }
