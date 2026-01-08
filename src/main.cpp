@@ -91,11 +91,14 @@ void handleButton();
   // Засыпание экрана
   unsigned long lastActivityTime = 0;   // время последней активности
   bool screenOn = true;                 // экран включён
+  bool showingWifiBeforeSleep = false;  // показываем WiFi инфо перед сном
+  unsigned long wifiInfoStartTime = 0;  // начало показа WiFi инфо
   #define SCREEN_TIMEOUT 30000          // мс до засыпания (30 сек)
+  #define WIFI_INFO_BEFORE_SLEEP 10000  // показывать WiFi инфо 10 сек перед сном
 #endif
 
-// Названия режимов
-const char* modeNames[] = {"", "Embers", "Fire", "Flame", "Ice", "Rainbow", "Firework", "Storm", "Rain", "Tree"};
+// Названия режимов (0 = выключено)
+const char* modeNames[] = {"Off", "Embers", "Fire", "Flame", "Ice", "Rainbow", "Firework", "Storm", "Rain", "Tree"};
 
 // Пресеты: скорость и яркость для каждого режима (индекс 0 не используется)
 const byte presetSpeed[] =      {0, 70, 30,  5, 10, 20, 90, 50, 80, 15};
@@ -185,6 +188,28 @@ byte rainbowHue = 0;  // смещение для радуги
 unsigned long lastUpdate = 0;
 #define UPDATE_INTERVAL 10  // фиксированный интервал обновления (мс)
 
+// WiFi состояние
+WiFiManager wm;
+bool wifiConnected = false;
+bool wifiPortalActive = false;
+unsigned long wifiSetupStartTime = 0;
+#define WIFI_INFO_DURATION 10000  // показывать инфо о WiFi 10 сек
+
+void showWiFiSetupScreen() {
+  #if HAS_OLED
+    display.clear();
+    display.setFont(ArialMT_Plain_10);
+    display.setTextAlignment(TEXT_ALIGN_CENTER);
+    display.drawString(64, 0, "WiFi not configured");
+    display.drawString(64, 14, "Connect to AP:");
+    display.setFont(ArialMT_Plain_16);
+    display.drawString(64, 28, "Fireplace-Setup");
+    display.setFont(ArialMT_Plain_10);
+    display.drawString(64, 48, "Pass: 12345678");
+    display.display();
+  #endif
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -229,56 +254,128 @@ void setup() {
     targetBrightness[i] = random8();
   }
   
-  // WiFiManager - автоматически создаёт точку доступа при первом запуске
-  WiFiManager wm;
-
-  // Раскомментируй для сброса настроек WiFi при каждом запуске (для отладки)
-  // wm.resetSettings();
-
-  // Таймаут портала настройки (секунды). 0 = без таймаута
-  wm.setConfigPortalTimeout(180);
+  // WiFiManager настройка
+  // wm.resetSettings();  // Раскомментируй для сброса WiFi
 
   Serial.println();
   Serial.println("Connecting to WiFi...");
 
-  // autoConnect создаёт AP "Fireplace-Setup" если нет сохранённых данных
-  // После ввода credentials перезагружается и подключается к WiFi
-  if (!wm.autoConnect("Fireplace-Setup", "12345678")) {
-    Serial.println("Failed to connect, restarting...");
-    delay(3000);
-    ESP.restart();
-  }
+  #if HAS_BUTTON
+    // С кнопкой: неблокирующий режим — камин работает сразу
+    wm.setConfigPortalBlocking(false);
+    wm.setConfigPortalTimeout(0);  // Портал не закрывается по таймауту
 
-  Serial.println("WiFi connected!");
-  Serial.print("IP: ");
-  Serial.println(WiFi.localIP());
+    if (wm.autoConnect("Fireplace-Setup", "12345678")) {
+      wifiConnected = true;
+      Serial.println("WiFi connected!");
+      Serial.print("IP: ");
+      Serial.println(WiFi.localIP());
+    } else {
+      wifiPortalActive = true;
+      wifiSetupStartTime = millis();
+      showWiFiSetupScreen();
+      Serial.println("WiFi portal started, running in offline mode");
+    }
+  #else
+    // Без кнопки: блокирующий режим — ждём WiFi
+    wm.setConfigPortalTimeout(180);
+    wm.setAPCallback([](WiFiManager *myWiFiManager) {
+      Serial.println("Entered config mode");
+      fill_solid(leds, numLeds, CRGB(255, 100, 20));
+      FastLED.setBrightness(100);
+      FastLED.show();
+    });
 
-  updateDisplay();
-  #if HAS_OLED
-    lastActivityTime = millis();  // Запуск таймера засыпания экрана
+    if (!wm.autoConnect("Fireplace-Setup", "12345678")) {
+      Serial.println("Failed to connect, restarting...");
+      delay(3000);
+      ESP.restart();
+    }
+    wifiConnected = true;
+    Serial.println("WiFi connected!");
+    Serial.print("IP: ");
+    Serial.println(WiFi.localIP());
   #endif
 
+  // Настройка веб-сервера
   server.on("/", handleRoot);
   server.on("/set", handleSet);
   server.on("/setleds", handleSetLeds);
   server.on("/wifi", handleWiFi);
   server.on("/wifi/scan", handleWiFiScan);
   server.on("/wifi/connect", handleWiFiConnect);
-  server.begin();
+
+  if (wifiConnected) {
+    server.begin();
+    updateDisplay();
+  }
+
+  #if HAS_OLED
+    lastActivityTime = millis();
+  #endif
 }
 
 void loop() {
-  server.handleClient();
+  // Обработка WiFi портала (неблокирующий режим)
+  #if HAS_BUTTON
+    if (wifiPortalActive) {
+      wm.process();
+
+      // Проверяем подключение к WiFi
+      if (WiFi.status() == WL_CONNECTED && !wifiConnected) {
+        wifiConnected = true;
+        wifiPortalActive = false;
+        server.begin();
+        Serial.println("WiFi connected!");
+        Serial.print("IP: ");
+        Serial.println(WiFi.localIP());
+        updateDisplay();
+      }
+
+      // Через 10 сек переключаемся на обычный дисплей (если не показываем WiFi перед сном)
+      #if HAS_OLED
+        if (!showingWifiBeforeSleep && millis() - wifiSetupStartTime > WIFI_INFO_DURATION) {
+          wifiSetupStartTime = millis() + 1000000;  // Не показывать больше
+          updateDisplay();
+        }
+      #else
+        if (millis() - wifiSetupStartTime > WIFI_INFO_DURATION) {
+          wifiSetupStartTime = millis() + 1000000;
+        }
+      #endif
+    }
+  #endif
+
+  if (wifiConnected) {
+    server.handleClient();
+  }
+
   #if HAS_BUTTON
     handleButton();
   #endif
 
   #if HAS_OLED
     // Засыпание экрана по таймауту
-    if (screenOn && millis() - lastActivityTime > SCREEN_TIMEOUT) {
+    if (screenOn && !showingWifiBeforeSleep && millis() - lastActivityTime > SCREEN_TIMEOUT) {
+      // Если WiFi не подключён — сначала показать инфо о настройке
+      if (!wifiConnected) {
+        showingWifiBeforeSleep = true;
+        wifiInfoStartTime = millis();
+        showWiFiSetupScreen();
+        Serial.println("Showing WiFi info before sleep");
+      } else {
+        display.displayOff();
+        screenOn = false;
+        Serial.println("Screen off");
+      }
+    }
+
+    // После 10 сек WiFi инфо — выключить экран
+    if (showingWifiBeforeSleep && millis() - wifiInfoStartTime > WIFI_INFO_BEFORE_SLEEP) {
       display.displayOff();
       screenOn = false;
-      Serial.println("Screen off");
+      showingWifiBeforeSleep = false;
+      Serial.println("Screen off after WiFi info");
     }
   #endif
 
@@ -289,6 +386,13 @@ void loop() {
 }
 
 void updateFire() {
+  // Off режим — выключить все LED
+  if (fireMode == 0) {
+    fill_solid(leds, numLeds, CRGB::Black);
+    FastLED.show();
+    return;
+  }
+
   // Rainbow режим — отдельная логика
   if (fireMode == 5) {
     rainbowHue += map(flickerSpeed, 100, 5, 1, 5);  // чем меньше interval, тем быстрее (в 2 раза медленнее)
@@ -680,7 +784,12 @@ void handleRoot() {
     html += "</style></head><body>";
   
   html += "<h2 style='color:#ff6600;text-align:center;cursor:pointer' onclick='document.getElementById(\"adv\").style.display=document.getElementById(\"adv\").style.display==\"none\"?\"block\":\"none\"'>Fireplace</h2>";
-  
+
+  // Кнопка питания
+  html += "<div class='box' style='text-align:center'>";
+  html += "<button id='pwr' class='btn' onclick='togglePower()' style='font-size:24px;padding:15px 40px;background:" + String(fireMode==0?"#333":"#ff6600") + "'>" + String(fireMode==0?"&#9788;":"&#9728;") + "</button>";
+  html += "</div>";
+
   html += "<div class='box'><div class='btns'>";
   html += "<button class='btn" + String(fireMode==1?" on":"") + "' onclick='setMode(1)' style='background:" + String(fireMode==1?"#aa2200":"#522") + "'>Embers</button>";
   html += "<button class='btn" + String(fireMode==2?" on":"") + "' onclick='setMode(2)' style='background:" + String(fireMode==2?"#ff6600":"#633") + "'>Fire</button>";
@@ -715,9 +824,12 @@ void handleRoot() {
   }
   html += "};";
   html += "var colors={1:['#aa2200','#522'],2:['#ff6600','#633'],3:['#ff9922','#653'],4:['#0099ff','#446'],5:['linear-gradient(90deg,red,orange,yellow,green,blue,violet)','linear-gradient(90deg,#633,#663,#363,#336,#636)'],6:['linear-gradient(135deg,#ff0066,#ffcc00,#00ffcc,#ff00ff)','linear-gradient(135deg,#633,#653,#356,#636)'],7:['linear-gradient(180deg,#001133,#ffff00,#001133)','linear-gradient(180deg,#223,#553,#223)'],8:['linear-gradient(180deg,#000,#00aaff,#000)','linear-gradient(180deg,#111,#234,#111)'],9:['linear-gradient(180deg,#228b22,#8b4513,#228b22)','linear-gradient(180deg,#243,#432,#243)']};";
-  html += "function setMode(n){m=n;sp.value=presets[n].s;br.value=presets[n].b;sv.innerText=presets[n].s;bv.innerText=presets[n].b;upd();send();}";
+  html += "var lastMode=localStorage.getItem('lastMode')||2;";
+  html += "function setMode(n){m=n;lastMode=n;localStorage.setItem('lastMode',n);sp.value=presets[n].s;br.value=presets[n].b;sv.innerText=presets[n].s;bv.innerText=presets[n].b;upd();send();updPwr();}";
   html += "function upd(){document.querySelectorAll('.btns .btn').forEach(function(b,i){var n=i+1;b.className='btn'+(n==m?' on':'');b.style.background=colors[n][n==m?0:1];});}";
   html += "function send(){fetch('/set?mode='+m+'&speed='+sp.value+'&bright='+br.value);}";
+  html += "function togglePower(){if(m>0){lastMode=m;localStorage.setItem('lastMode',m);m=0;}else{m=parseInt(lastMode);sp.value=presets[m].s;br.value=presets[m].b;sv.innerText=presets[m].s;bv.innerText=presets[m].b;}upd();send();updPwr();}";
+  html += "function updPwr(){var p=document.getElementById('pwr');p.style.background=m==0?'#333':'#ff6600';p.innerHTML=m==0?'&#9788;':'&#9728;';}";
   html += "function setLeds(){fetch('/setleds?n='+document.getElementById('leds').value).then(()=>location.reload());}</script>";
 
   html += "</body></html>";
@@ -726,7 +838,7 @@ void handleRoot() {
 }
 
 void handleSet() {
-  if (server.hasArg("mode")) fireMode = constrain(server.arg("mode").toInt(), 1, 9);
+  if (server.hasArg("mode")) fireMode = constrain(server.arg("mode").toInt(), 0, 9);
   if (server.hasArg("speed")) flickerSpeed = constrain(server.arg("speed").toInt(), 5, 100);
   if (server.hasArg("bright")) maxBrightness = constrain(server.arg("bright").toInt(), 10, 255);
   saveSettings();
@@ -821,7 +933,7 @@ void handleWiFiConnect() {
 void loadSettings() {
   EEPROM.begin(EEPROM_SIZE);
   if (EEPROM.read(ADDR_MAGIC) == MAGIC_VALUE) {
-    fireMode = constrain(EEPROM.read(ADDR_MODE), 1, 9);
+    fireMode = constrain(EEPROM.read(ADDR_MODE), 0, 9);
     flickerSpeed = constrain(EEPROM.read(ADDR_SPEED), 5, 100);
     maxBrightness = constrain(EEPROM.read(ADDR_BRIGHTNESS), 10, 255);
     int savedLeds = EEPROM.read(ADDR_NUM_LEDS_L) | (EEPROM.read(ADDR_NUM_LEDS_H) << 8);
@@ -890,8 +1002,10 @@ void handleButton() {
       if (!screenOn) {
         display.displayOn();
         screenOn = true;
+        showingWifiBeforeSleep = false;
         lastActivityTime = now;
         lastBtnState = btnState;
+        updateDisplay();
         Serial.println("Screen wake up");
         return;
       }

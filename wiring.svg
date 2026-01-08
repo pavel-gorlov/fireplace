@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 520" width="700" height="520">
+  <defs>
+    <style>
+      .title { font: bold 24px sans-serif; fill: #333; }
+      .subtitle { font: 14px sans-serif; fill: #666; }
+      .label { font: bold 12px monospace; fill: #333; }
+      .pin { font: 10px monospace; fill: #fff; }
+      .pin-label { font: 9px monospace; fill: #333; }
+      .wire-red { stroke: #e53935; stroke-width: 2.5; fill: none; }
+      .wire-black { stroke: #333; stroke-width: 2.5; fill: none; }
+      .wire-green { stroke: #43a047; stroke-width: 2.5; fill: none; }
+      .wire-orange { stroke: #ffb74d; stroke-width: 2.5; fill: none; }
+      .component { stroke: #333; stroke-width: 1.5; }
+      .resistor { stroke: #333; stroke-width: 1.5; fill: #e8d4b8; }
+      .note { font: 11px sans-serif; fill: #555; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="700" height="520" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="350" y="35" text-anchor="middle" class="title">Fireplace v0.3.7 - Wiring Diagram</text>
+  <text x="350" y="55" text-anchor="middle" class="subtitle">HW-364A (NodeMCU + OLED) + WS2812 8x8 Matrix + Button</text>
+
+  <!-- NodeMCU Board with integrated OLED -->
+  <g transform="translate(250, 90)">
+    <rect x="0" y="0" width="200" height="260" rx="8" fill="#1565c0" class="component"/>
+    <rect x="10" y="10" width="180" height="240" rx="4" fill="#0d47a1"/>
+
+    <!-- USB port -->
+    <rect x="70" y="-15" width="60" height="25" rx="3" fill="#666" class="component"/>
+    <text x="100" y="2" text-anchor="middle" class="pin">USB</text>
+
+    <!-- Integrated OLED screen -->
+    <rect x="40" y="30" width="120" height="60" fill="#000" rx="2" class="component"/>
+    <text x="100" y="55" text-anchor="middle" fill="#4fc3f7" style="font: 9px monospace;">OLED 128x64</text>
+    <text x="100" y="70" text-anchor="middle" fill="#4fc3f7" style="font: 8px monospace;">(integrated)</text>
+
+    <!-- ESP8266 chip -->
+    <rect x="50" y="110" width="100" height="60" fill="#333" class="component"/>
+    <text x="100" y="145" text-anchor="middle" fill="#aaa" style="font: 10px monospace;">ESP8266</text>
+
+    <!-- Board label -->
+    <text x="100" y="200" text-anchor="middle" class="label" fill="#fff">HW-364A</text>
+    <text x="100" y="215" text-anchor="middle" fill="#90caf9" style="font: 10px sans-serif;">NodeMCU + OLED</text>
+
+    <!-- Left pins -->
+    <g transform="translate(-5, 100)">
+      <circle cx="0" cy="0" r="6" fill="#ffd54f"/><text x="-25" y="4" class="pin-label">3V3</text>
+      <circle cx="0" cy="25" r="6" fill="#333"/><text x="-25" y="29" class="pin-label">GND</text>
+      <circle cx="0" cy="50" r="6" fill="#e57373"/><text x="-25" y="54" class="pin-label">D3</text>
+      <circle cx="0" cy="75" r="6" fill="#81c784"/><text x="-25" y="79" class="pin-label">D4</text>
+      <circle cx="0" cy="100" r="6" fill="#81c784"/><text x="-25" y="104" class="pin-label">D5</text>
+      <circle cx="0" cy="125" r="6" fill="#81c784"/><text x="-25" y="129" class="pin-label">D6</text>
+    </g>
+
+    <!-- Right pins -->
+    <g transform="translate(205, 100)">
+      <circle cx="0" cy="0" r="6" fill="#e53935"/><text x="15" y="4" class="pin-label">VIN</text>
+      <circle cx="0" cy="25" r="6" fill="#333"/><text x="15" y="29" class="pin-label">GND</text>
+      <circle cx="0" cy="50" r="6" fill="#81c784"/><text x="15" y="54" class="pin-label">RST</text>
+      <circle cx="0" cy="75" r="6" fill="#81c784"/><text x="15" y="79" class="pin-label">EN</text>
+      <circle cx="0" cy="100" r="6" fill="#ffb74d"/><text x="15" y="104" class="pin-label">D7</text>
+      <circle cx="0" cy="125" r="6" fill="#81c784"/><text x="15" y="129" class="pin-label">D8</text>
+    </g>
+  </g>
+
+  <!-- WS2812 8x8 Matrix -->
+  <g transform="translate(30, 140)">
+    <rect x="0" y="0" width="120" height="120" rx="4" fill="#2e2e2e" class="component"/>
+    <text x="60" y="-10" text-anchor="middle" class="label">WS2812 8x8</text>
+    <text x="60" y="140" text-anchor="middle" class="note">(64 LEDs)</text>
+
+    <!-- LED grid -->
+    <g transform="translate(12, 12)">
+      <rect x="0" y="0" width="10" height="10" fill="#e53935" rx="1"/>
+      <rect x="14" y="0" width="10" height="10" fill="#fb8c00" rx="1"/>
+      <rect x="28" y="0" width="10" height="10" fill="#fdd835" rx="1"/>
+      <rect x="42" y="0" width="10" height="10" fill="#43a047" rx="1"/>
+      <rect x="56" y="0" width="10" height="10" fill="#1e88e5" rx="1"/>
+      <rect x="70" y="0" width="10" height="10" fill="#8e24aa" rx="1"/>
+      <rect x="84" y="0" width="10" height="10" fill="#e53935" rx="1"/>
+      <rect x="0" y="14" width="10" height="10" fill="#fb8c00" rx="1"/>
+      <rect x="14" y="14" width="10" height="10" fill="#fdd835" rx="1"/>
+      <rect x="28" y="14" width="10" height="10" fill="#43a047" rx="1"/>
+      <rect x="42" y="14" width="10" height="10" fill="#1e88e5" rx="1"/>
+      <rect x="56" y="14" width="10" height="10" fill="#8e24aa" rx="1"/>
+      <rect x="70" y="14" width="10" height="10" fill="#e53935" rx="1"/>
+      <rect x="84" y="14" width="10" height="10" fill="#fb8c00" rx="1"/>
+      <rect x="0" y="28" width="96" height="10" fill="#333" rx="1"/>
+      <rect x="0" y="42" width="96" height="10" fill="#444" rx="1"/>
+      <rect x="0" y="56" width="96" height="10" fill="#333" rx="1"/>
+      <rect x="0" y="70" width="96" height="10" fill="#444" rx="1"/>
+      <rect x="0" y="84" width="96" height="10" fill="#333" rx="1"/>
+    </g>
+
+    <!-- Matrix pins (bottom) -->
+    <text x="20" y="115" text-anchor="middle" fill="#fff" style="font: 8px monospace;">5V</text>
+    <text x="60" y="115" text-anchor="middle" fill="#fff" style="font: 8px monospace;">GND</text>
+    <text x="100" y="115" text-anchor="middle" fill="#fff" style="font: 8px monospace;">DIN</text>
+  </g>
+
+  <!-- 220 Ohm Resistor on data line -->
+  <g transform="translate(165, 233)">
+    <rect x="0" y="-5" width="40" height="14" rx="2" class="resistor"/>
+    <line x1="-10" y1="2" x2="0" y2="2" class="wire-green"/>
+    <line x1="40" y1="2" x2="50" y2="2" class="wire-green"/>
+    <!-- Color bands -->
+    <rect x="5" y="-3" width="4" height="10" fill="#e53935"/>
+    <rect x="12" y="-3" width="4" height="10" fill="#e53935"/>
+    <rect x="19" y="-3" width="4" height="10" fill="#795548"/>
+    <rect x="30" y="-3" width="4" height="10" fill="#ffd54f"/>
+    <text x="20" y="22" text-anchor="middle" class="note">220Ω</text>
+  </g>
+
+  <!-- Button -->
+  <g transform="translate(550, 160)">
+    <rect x="0" y="0" width="80" height="60" rx="4" fill="#78909c" class="component"/>
+    <text x="40" y="-10" text-anchor="middle" class="label">Button</text>
+
+    <!-- Button cap -->
+    <circle cx="40" cy="30" r="20" fill="#546e7a" class="component"/>
+    <circle cx="40" cy="30" r="15" fill="#455a64"/>
+
+    <!-- Button pins labels -->
+    <text x="15" y="55" text-anchor="middle" fill="#fff" style="font: 8px monospace;">SIG</text>
+    <text x="65" y="55" text-anchor="middle" fill="#fff" style="font: 8px monospace;">GND</text>
+    <text x="40" y="75" text-anchor="middle" class="note">tactile 4-pin</text>
+  </g>
+
+  <!-- Power Supply -->
+  <g transform="translate(280, 400)">
+    <rect x="0" y="0" width="140" height="80" rx="4" fill="#424242" class="component"/>
+    <text x="70" y="-10" text-anchor="middle" class="label">Power Supply 5V</text>
+    <text x="70" y="30" text-anchor="middle" fill="#fff" style="font: bold 16px sans-serif;">5V 2A+</text>
+    <text x="70" y="50" text-anchor="middle" fill="#aaa" style="font: 10px sans-serif;">USB charger or</text>
+    <text x="70" y="65" text-anchor="middle" fill="#aaa" style="font: 10px sans-serif;">DC adapter</text>
+
+    <!-- PSU output wires -->
+    <circle cx="45" cy="90" r="6" fill="#e53935"/><text x="45" y="108" text-anchor="middle" class="pin-label">+5V</text>
+    <circle cx="95" cy="90" r="6" fill="#333"/><text x="95" y="108" text-anchor="middle" class="pin-label">GND</text>
+  </g>
+
+  <!-- Wires -->
+
+  <!-- Matrix DIN through resistor to D3 (green) -->
+  <path d="M 130 240 L 155 240 L 155 235" class="wire-green"/>
+  <circle cx="130" cy="240" r="4" fill="#43a047"/>
+  <path d="M 215 235 L 215 240 L 245 240" class="wire-green"/>
+
+  <!-- Matrix 5V from PSU (red) -->
+  <path d="M 50 260 L 50 370 L 325 370 L 325 400" class="wire-red"/>
+  <circle cx="50" cy="260" r="4" fill="#e53935"/>
+
+  <!-- Matrix GND from PSU (black) -->
+  <path d="M 90 260 L 90 360 L 375 360 L 375 400" class="wire-black"/>
+  <circle cx="90" cy="260" r="4" fill="#333"/>
+
+  <!-- NodeMCU VIN from PSU - branch from 5V line (red) -->
+  <path d="M 325 370 L 520 370 L 520 190 L 455 190" class="wire-red"/>
+  <circle cx="325" cy="370" r="4" fill="#e53935"/>
+  <circle cx="455" cy="190" r="4" fill="#e53935"/>
+
+  <!-- NodeMCU GND from PSU through diode -->
+  <path d="M 375 360 L 530 360 L 530 260" class="wire-black"/>
+  <circle cx="375" cy="360" r="4" fill="#333"/>
+  <!-- Diode symbol (cathode to MCU, anode to PSU) -->
+  <g transform="translate(530, 245)">
+    <polygon points="-8,0 8,0 0,-12" fill="#333" stroke="#333" stroke-width="1"/>
+    <line x1="-8" y1="-12" x2="8" y2="-12" stroke="#333" stroke-width="2"/>
+    <line x1="0" y1="0" x2="0" y2="15" stroke="#333" stroke-width="2.5"/>
+    <line x1="0" y1="-12" x2="0" y2="-27" stroke="#333" stroke-width="2.5"/>
+    <text x="15" y="-5" class="note">1N4007</text>
+  </g>
+  <path d="M 530 218 L 530 215 L 455 215" class="wire-black"/>
+  <circle cx="455" cy="215" r="4" fill="#333"/>
+
+  <!-- Button SIG to D7 (orange) -->
+  <path d="M 565 220 L 565 290 L 455 290" class="wire-orange"/>
+  <circle cx="565" cy="220" r="4" fill="#ffb74d"/>
+  <circle cx="455" cy="290" r="4" fill="#ffb74d"/>
+
+  <!-- Button GND to common GND (black) -->
+  <path d="M 615 220 L 615 360 L 530 360" class="wire-black"/>
+  <circle cx="615" cy="220" r="4" fill="#333"/>
+
+  <!-- Connection dots on PSU -->
+  <circle cx="325" cy="490" r="4" fill="#e53935"/>
+  <circle cx="375" cy="490" r="4" fill="#333"/>
+
+  <!-- Legend -->
+  <g transform="translate(30, 420)">
+    <text x="0" y="0" class="label">Connections:</text>
+    <line x1="0" y1="15" x2="30" y2="15" class="wire-green"/>
+    <text x="35" y="19" class="note">D3 → 220Ω → Matrix DIN</text>
+    <line x1="0" y1="35" x2="30" y2="35" class="wire-orange"/>
+    <text x="35" y="39" class="note">D7 ← Button</text>
+    <line x1="0" y1="55" x2="30" y2="55" class="wire-red"/>
+    <text x="35" y="59" class="note">5V → VIN + Matrix</text>
+    <line x1="0" y1="75" x2="30" y2="75" class="wire-black"/>
+    <text x="35" y="79" class="note">GND → diode → MCU GND</text>
+  </g>
+
+  <!-- Notes -->
+  <g transform="translate(480, 420)">
+    <text x="0" y="0" class="label">Notes:</text>
+    <text x="0" y="18" class="note">- 220Ω on data line</text>
+    <text x="0" y="33" class="note">- Diode on MCU GND</text>
+    <text x="0" y="48" class="note">- Common GND for</text>
+    <text x="0" y="63" class="note">  matrix and button</text>
+    <text x="0" y="78" class="note">- Button: INPUT_PULLUP</text>
+  </g>
+</svg>
