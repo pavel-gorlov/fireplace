@@ -1,11 +1,28 @@
+// === КОНФИГУРАЦИЯ LED ===
+#define LED_MATRIX 1       // 1 = матрица 8x8, 0 = лента
+#define LED_PIN 0          // GPIO0 = D3
+
+#if LED_MATRIX
+  #define DEFAULT_NUM_LEDS 64
+  #define LED_TYPE WS2812
+#else
+  #define DEFAULT_NUM_LEDS 144
+  #define LED_TYPE WS2811
+#endif
+
 #define MAX_LEDS 300
-#define DEFAULT_NUM_LEDS 144
 #include "FastLED.h"
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>
 #include <EEPROM.h>
-#define PIN 0
+#include <Wire.h>
+#include <SSD1306Wire.h>
+
+// OLED дисплей 128x64 на I2C (HW-364A: SDA=GPIO14/D5, SCL=GPIO12/D6)
+#define OLED_SDA 14
+#define OLED_SCL 12
+SSD1306Wire display(0x3C, OLED_SDA, OLED_SCL);
 
 // EEPROM addresses
 #define EEPROM_SIZE 16
@@ -28,6 +45,37 @@ byte getTargetBrightness();
 CRGB getFireColor(byte bright);
 void loadSettings();
 void saveSettings();
+void updateDisplay();
+
+// Названия режимов
+const char* modeNames[] = {"", "Embers", "Fire", "Flame", "Ice", "Rainbow"};
+
+// Иконка песочных часов 12x12
+const uint8_t icon_hourglass[] PROGMEM = {
+  0xFE, 0x07, 0xFE, 0x07, 0x04, 0x02, 0x88, 0x01,
+  0xD0, 0x00, 0x60, 0x00, 0x60, 0x00, 0xD0, 0x00,
+  0x88, 0x01, 0x04, 0x02, 0xFE, 0x07, 0xFE, 0x07
+};
+
+// Иконка солнца 16x16: маленький круг 4x4, лучи 1px по сторонам и диагоналям
+const uint8_t icon_sun[] PROGMEM = {
+  0x80, 0x00,  // верхний луч
+  0x84, 0x10,  // диагонали + луч
+  0x88, 0x08,  // диагонали + луч
+  0x10, 0x04,  // диагонали
+  0x00, 0x00,
+  0xC0, 0x03,  // круг 4x4
+  0xC0, 0x03,
+  0xC7, 0xE3,  // круг + боковые лучи
+  0xC0, 0x03,
+  0xC0, 0x03,  // круг 4x4
+  0x00, 0x00,
+  0x10, 0x04,  // диагонали
+  0x88, 0x08,  // диагонали + луч
+  0x84, 0x10,  // диагонали + луч
+  0x80, 0x00,  // нижний луч
+  0x00, 0x00
+};
 
 CRGB leds[MAX_LEDS];
 ESP8266WebServer server(80);
@@ -47,9 +95,25 @@ unsigned long lastUpdate = 0;
 void setup() {
   Serial.begin(115200);
 
+  // Инициализация OLED
+  display.init();
+  display.flipScreenVertically();
+  display.setFont(ArialMT_Plain_16);
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.clear();
+  display.drawString(64, 24, "Connecting...");
+  display.display();
+
   loadSettings();
 
-  FastLED.addLeds<WS2811, PIN, GRB>(leds, numLeds).setCorrection(TypicalLEDStrip);
+  FastLED.addLeds<LED_TYPE, LED_PIN, GRB>(leds, numLeds).setCorrection(TypicalLEDStrip);
+
+  // Тест LED при старте - красная вспышка
+  fill_solid(leds, numLeds, CRGB::Red);
+  FastLED.show();
+  delay(300);
+  fill_solid(leds, numLeds, CRGB::Black);
+  FastLED.show();
   FastLED.setBrightness(maxBrightness);
 
   for (int i = 0; i < numLeds; i++) {
@@ -80,7 +144,9 @@ void setup() {
   Serial.println("WiFi connected!");
   Serial.print("IP: ");
   Serial.println(WiFi.localIP());
-  
+
+  updateDisplay();
+
   server.on("/", handleRoot);
   server.on("/set", handleSet);
   server.on("/setleds", handleSetLeds);
@@ -225,6 +291,7 @@ void handleSet() {
   if (server.hasArg("speed")) flickerSpeed = constrain(server.arg("speed").toInt(), 5, 100);
   if (server.hasArg("bright")) maxBrightness = constrain(server.arg("bright").toInt(), 10, 255);
   saveSettings();
+  updateDisplay();
   server.send(200, "text/plain", "OK");
 }
 
@@ -336,4 +403,32 @@ void saveSettings() {
   EEPROM.write(ADDR_NUM_LEDS_L, numLeds & 0xFF);
   EEPROM.write(ADDR_NUM_LEDS_H, (numLeds >> 8) & 0xFF);
   EEPROM.commit();
+}
+
+void updateDisplay() {
+  display.clear();
+
+  // Строка 1: IP адрес (мелкий шрифт, сверху)
+  display.setFont(ArialMT_Plain_10);
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.drawString(64, 0, WiFi.localIP().toString());
+
+  // Строка 2: Режим (средний шрифт)
+  display.setFont(ArialMT_Plain_16);
+  display.drawString(64, 20, modeNames[fireMode]);
+
+  // Строка 3: Скорость и Яркость с иконками
+  display.setFont(ArialMT_Plain_16);
+
+  // Скорость: иконка песочных часов + значение
+  display.drawXbm(0, 50, 12, 12, icon_hourglass);
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.drawString(14, 46, String(flickerSpeed));
+
+  // Яркость: значение + иконка солнца
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  display.drawString(110, 46, String(maxBrightness));
+  display.drawXbm(112, 48, 16, 16, icon_sun);
+
+  display.display();
 }
