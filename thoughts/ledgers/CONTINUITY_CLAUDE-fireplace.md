@@ -1,178 +1,72 @@
 # Session: fireplace
-Updated: 2026-01-07T00:00:00Z
+Updated: 2026-01-08T09:10:41.367Z
 
 ## Goal
-Add new LED modes, effects, or controls to the fireplace project while following existing code patterns and maintaining README.md.
+ESP8266 LED controller with multiple visual modes, OLED display, and button control.
 
 Success criteria:
-- New features work reliably on ESP8266 hardware
-- Code follows existing Russian comment style
+- All 9 modes work reliably on ESP8266 + 8x8 WS2812 matrix
+- OLED shows status (IP, mode, speed, brightness)
+- Button control for mode switching and parameter adjustment
 - Settings persist in EEPROM
-- README.md updated if modes/presets/settings/hardware/dependencies change
-- Build succeeds with PlatformIO
+- Web interface fully functional
 
 ## Constraints
-- **Platform**: ESP8266 (Wemos D1 Mini)
+- **Platform**: ESP8266 NodeMCU (HW-364A board)
 - **Framework**: Arduino/PlatformIO
 - **Language**: C++ with Russian comments
-- **LED Library**: FastLED 3.10.3
-- **WiFi**: WiFiManager 0.16.0
-- **Hardware**: WS2811/WS2812 LED strip, 144 LEDs on GPIO0 (D3)
-- **Storage**: EEPROM for settings persistence (mode, interval, brightness)
+- **LED**: WS2812 8x8 matrix (64 LEDs) on GPIO0 (D3)
+- **OLED**: SSD1306 128x64 on I2C (SDA=GPIO14, SCL=GPIO12)
+- **Button**: GPIO13 (D7) with INPUT_PULLUP
+- **Libraries**: FastLED 3.10.3, WiFiManager 0.16.0, SSD1306Wire
 - **Build**: `~/.platformio/penv/bin/pio run`
-- **Patterns**: Follow existing code style with Russian comments, EEPROM storage for new settings
 
 ## Key Decisions
-(None yet - will be populated as decisions are made)
+- Matrix axes: visual top-to-bottom = x in idx formula (discovered via Storm/Rain bugs)
+- Button control: single click = mode, hold = brightness, double+hold = speed
+- Screen sleep: 30s timeout, first press wakes without action
+- Firework: expanding rings with fill_solid each frame (no residue)
+- Storm: lightning path array, random deviation per row
+- Rain: drops with splash effect (upper semicircle)
+- Tree: brown trunk at bottom center, green crown with sin-wave leaf animation
 
 ## State
-- Now: [→] Initial exploration - ready to add new features
-- Next: Awaiting user request for specific feature/mode to implement
+- Done:
+  - [x] OLED display integration (custom I2C pins)
+  - [x] WS2812 8x8 matrix support
+  - [x] Button control (mode/brightness/speed)
+  - [x] Screen sleep with wake on press
+  - [x] Firework mode (v0.3.2)
+  - [x] Storm mode (v0.3.3)
+  - [x] Rain mode (v0.3.4)
+  - [x] Tree mode (v0.3.5)
+- Now: Session idle - awaiting user request
+- Next: Potential new modes or features
 
 ## Working Set
-- **Entry point**: `/home/x5/projects/fireplace/src/main.cpp`
-- **Config**: `/home/x5/projects/fireplace/platformio.ini`
-- **Docs**: `/home/x5/projects/fireplace/README.md`
-- **Build command**: `~/.platformio/penv/bin/pio run`
-- **Upload command**: `pio run -t upload`
-- **Monitor command**: `pio device monitor`
+- **Entry point**: `src/main.cpp`
+- **Config**: `platformio.ini`
+- **Build**: `~/.platformio/penv/bin/pio run`
+- **Upload**: `pio run -t upload`
+- **Current version**: v0.3.5
+- **Branch**: master
 
 ## Open Questions
-(None - hardware and architecture confirmed)
+(None - all features working)
 
-## Codebase Summary
-
-**Architecture**: Single-file ESP8266 firmware with web server for LED control.
-
-**Current Modes** (5 total):
-1. **Embers** - Tлеющие угли (slow, dim glow)
-2. **Fire** - Средний огонь (balanced)
-3. **Flame** - Яркое пламя (fast, bright flicker)
-4. **Ice** - Ледяное пламя (blue flame effect)
+## Current Modes (9 total)
+1. **Embers** - Тлеющие угли (slow, dim red-orange)
+2. **Fire** - Средний огонь (balanced orange)
+3. **Flame** - Яркое пламя (fast, bright yellow)
+4. **Ice** - Ледяное пламя (blue flame)
 5. **Rainbow** - Радуга (color cycling)
+6. **Firework** - Фейерверк (expanding colorful rings)
+7. **Storm** - Гроза (lightning on dark blue background)
+8. **Rain** - Дождь (falling drops with splash)
+9. **Tree** - Дерево (swaying green crown on brown trunk)
 
-**Key Components**:
-- LED control via FastLED library
-- Web server on ESP8266WebServer
-- WiFi configuration portal (WiFiManager)
-- EEPROM persistence for: mode, interval, brightness, LED count
-- Web interface with mode buttons and settings controls
-
-**Entry Points**:
-- `setup()` - Initialize hardware, WiFi, web server
-- `loop()` - Update LEDs based on current mode
-- Mode functions: `embersMode()`, `fireMode()`, `flameMode()`, `iceMode()`, `rainbowMode()`
-
-**EEPROM Layout**:
-- Address 0: Mode (0-4)
-- Address 1-2: Update interval (uint16_t)
-- Address 3: Brightness (uint8_t)
-- Address 4-5: LED count (uint16_t)
-
-## Agent Reports
-
-### onboard (2026-01-08T08:58:06.434Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-08T08:56:27.602Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-08T08:52:39.083Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-08T08:51:19.152Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-08T08:49:03.348Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-08T08:47:36.058Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-08T08:45:30.476Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-08T08:44:06.207Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-08T08:40:08.297Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-08T08:38:41.876Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-08T08:32:44.213Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-08T08:30:13.701Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-08T08:30:08.147Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-### onboard (2026-01-07T20:41:36.496Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-### onboard (2026-01-07T20:38:07.199Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-### onboard (2026-01-07T20:33:50.734Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-### onboard (2026-01-07T20:23:43.134Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-### onboard (2026-01-07T20:14:26.110Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-### onboard (2026-01-07T20:10:53.194Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-### onboard (2026-01-07T20:09:29.346Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-### onboard (2026-01-07T20:09:25.037Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-### onboard (2026-01-07T19:50:54.706Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-### onboard (2026-01-07T19:50:32.740Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
+## Hardware Notes
+- Matrix coordinate system: idx = row * 8 + col
+- Visual top-to-bottom corresponds to col (x in idx)
+- Visual left-to-right corresponds to row (y in idx)
+- Button: 4-pin tactile, connect diagonal pins

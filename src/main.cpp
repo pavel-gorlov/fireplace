@@ -47,6 +47,7 @@ void updateFire();
 void updateFirework();
 void updateStorm();
 void updateRain();
+void updateTree();
 byte getTargetBrightness();
 CRGB getFireColor(byte bright);
 void loadSettings();
@@ -76,7 +77,11 @@ bool screenOn = true;                 // экран включён
 #define SCREEN_TIMEOUT 30000          // мс до засыпания (30 сек)
 
 // Названия режимов
-const char* modeNames[] = {"", "Embers", "Fire", "Flame", "Ice", "Rainbow", "Firework", "Storm", "Rain"};
+const char* modeNames[] = {"", "Embers", "Fire", "Flame", "Ice", "Rainbow", "Firework", "Storm", "Rain", "Tree"};
+
+// Пресеты: скорость и яркость для каждого режима (индекс 0 не используется)
+const byte presetSpeed[] =      {0, 70, 30,  5, 10, 20, 90, 50, 80, 15};
+const byte presetBrightness[] = {0, 70, 150, 255, 200, 100, 255, 200, 70, 55};
 
 // Общие константы для матрицы
 #define MATRIX_SIZE 8
@@ -112,6 +117,11 @@ struct Raindrop {
   float splashRadius; // радиус брызг
 };
 Raindrop raindrops[MAX_RAINDROPS];
+
+// Дерево: состояние каждого листа (как угли)
+float leafBright[64];         // текущая яркость
+byte leafTargetBright[64];    // целевая яркость
+byte leafHue[64];             // текущий оттенок зелёного
 
 // Иконка песочных часов 12x12
 const uint8_t icon_hourglass[] PROGMEM = {
@@ -267,6 +277,12 @@ void updateFire() {
   // Rain режим
   if (fireMode == 8) {
     updateRain();
+    return;
+  }
+
+  // Tree режим
+  if (fireMode == 9) {
+    updateTree();
     return;
   }
 
@@ -514,6 +530,60 @@ void updateRain() {
   FastLED.show();
 }
 
+void updateTree() {
+  // Скорость изменения как у углей - зависит от flickerSpeed
+  float step = 255.0 / (flickerSpeed * 12);  // медленнее чем огонь
+
+  // Чёрный фон
+  fill_solid(leds, numLeds, CRGB::Black);
+
+  // Ствол: коричневый, в центре (row 3-4), нижняя часть (col 5-7)
+  for (int row = 3; row <= 4; row++) {
+    for (int col = 5; col <= 7; col++) {
+      int idx = row * MATRIX_SIZE + col;
+      // Коричневый цвет (hue 30-35 = коричневый)
+      byte brownHue = 30 + random8(5);
+      byte brownSat = 255;
+      byte brownVal = 60 + random8(40);  // тусклый
+      leds[idx] = CHSV(brownHue, brownSat, brownVal);
+    }
+  }
+
+  // Крона: форма дерева
+  const int crownLeft[] =  {3, 2, 1, 1, 2};
+  const int crownRight[] = {4, 5, 6, 6, 5};
+
+  for (int col = 0; col <= 4; col++) {
+    for (int row = crownLeft[col]; row <= crownRight[col]; row++) {
+      int idx = row * MATRIX_SIZE + col;
+      if (idx < 0 || idx >= numLeds) continue;
+
+      // Плавное движение к целевой яркости (как угли)
+      if (leafBright[idx] < leafTargetBright[idx] - step) {
+        leafBright[idx] += step;
+      } else if (leafBright[idx] > leafTargetBright[idx] + step) {
+        leafBright[idx] -= step;
+      } else {
+        // Достигли цели - новая случайная цель
+        leafBright[idx] = leafTargetBright[idx];
+        leafTargetBright[idx] = random8(40, 255);  // широкий разброс яркости
+        // Новый случайный оттенок зелёного
+        leafHue[idx] = random8(80, 110);  // от жёлто-зелёного до сине-зелёного
+      }
+
+      // Рисуем лист
+      byte hue = leafHue[idx];
+      byte sat = 255;
+      byte val = (byte)leafBright[idx];
+
+      leds[idx] = CHSV(hue, sat, val);
+    }
+  }
+
+  FastLED.setBrightness(maxBrightness);
+  FastLED.show();
+}
+
 byte getTargetBrightness() {
   switch (fireMode) {
     case 1: return random8(20, 120);   // Embers: тусклые угли
@@ -524,6 +594,7 @@ byte getTargetBrightness() {
     case 6: return 255;                // Firework: полная яркость
     case 7: return 255;                // Storm: полная яркость
     case 8: return 255;                // Rain: полная яркость
+    case 9: return 255;                // Tree: полная яркость
     default: return random8(40, 200);
   }
 }
@@ -582,6 +653,7 @@ void handleRoot() {
   html += "<button class='btn" + String(fireMode==6?" on":"") + "' onclick='setMode(6)' style='background:" + String(fireMode==6?"linear-gradient(135deg,#ff0066,#ffcc00,#00ffcc,#ff00ff)":"linear-gradient(135deg,#633,#653,#356,#636)") + "'>Firework</button>";
   html += "<button class='btn" + String(fireMode==7?" on":"") + "' onclick='setMode(7)' style='background:" + String(fireMode==7?"linear-gradient(180deg,#001133,#ffff00,#001133)":"linear-gradient(180deg,#223,#553,#223)") + "'>Storm</button>";
   html += "<button class='btn" + String(fireMode==8?" on":"") + "' onclick='setMode(8)' style='background:" + String(fireMode==8?"linear-gradient(180deg,#000,#00aaff,#000)":"linear-gradient(180deg,#111,#234,#111)") + "'>Rain</button>";
+  html += "<button class='btn" + String(fireMode==9?" on":"") + "' onclick='setMode(9)' style='background:" + String(fireMode==9?"linear-gradient(180deg,#228b22,#8b4513,#228b22)":"linear-gradient(180deg,#243,#432,#243)") + "'>Tree</button>";
   html += "</div></div>";
 
   html += "<div class='box'>Update interval: <span id='sv'>" + String(flickerSpeed) + "</span> ms<br>";
@@ -597,8 +669,14 @@ void handleRoot() {
   html += "<button class='btn' style='background:#ff6600;margin-top:10px' onclick='setLeds()'>Apply & Restart</button></div>";
 
   html += "<script>var m=" + String(fireMode) + ";";
-  html += "var presets={1:{s:70,b:70},2:{s:30,b:150},3:{s:5,b:255},4:{s:10,b:200},5:{s:20,b:255},6:{s:30,b:255},7:{s:50,b:200},8:{s:40,b:255}};";
-  html += "var colors={1:['#aa2200','#522'],2:['#ff6600','#633'],3:['#ff9922','#653'],4:['#0099ff','#446'],5:['linear-gradient(90deg,red,orange,yellow,green,blue,violet)','linear-gradient(90deg,#633,#663,#363,#336,#636)'],6:['linear-gradient(135deg,#ff0066,#ffcc00,#00ffcc,#ff00ff)','linear-gradient(135deg,#633,#653,#356,#636)'],7:['linear-gradient(180deg,#001133,#ffff00,#001133)','linear-gradient(180deg,#223,#553,#223)'],8:['linear-gradient(180deg,#000,#00aaff,#000)','linear-gradient(180deg,#111,#234,#111)']};";
+  // Генерируем пресеты из C++ массивов (единая точка правды)
+  html += "var presets={";
+  for (int i = 1; i <= 9; i++) {
+    if (i > 1) html += ",";
+    html += String(i) + ":{s:" + String(presetSpeed[i]) + ",b:" + String(presetBrightness[i]) + "}";
+  }
+  html += "};";
+  html += "var colors={1:['#aa2200','#522'],2:['#ff6600','#633'],3:['#ff9922','#653'],4:['#0099ff','#446'],5:['linear-gradient(90deg,red,orange,yellow,green,blue,violet)','linear-gradient(90deg,#633,#663,#363,#336,#636)'],6:['linear-gradient(135deg,#ff0066,#ffcc00,#00ffcc,#ff00ff)','linear-gradient(135deg,#633,#653,#356,#636)'],7:['linear-gradient(180deg,#001133,#ffff00,#001133)','linear-gradient(180deg,#223,#553,#223)'],8:['linear-gradient(180deg,#000,#00aaff,#000)','linear-gradient(180deg,#111,#234,#111)'],9:['linear-gradient(180deg,#228b22,#8b4513,#228b22)','linear-gradient(180deg,#243,#432,#243)']};";
   html += "function setMode(n){m=n;sp.value=presets[n].s;br.value=presets[n].b;sv.innerText=presets[n].s;bv.innerText=presets[n].b;upd();send();}";
   html += "function upd(){document.querySelectorAll('.btns .btn').forEach(function(b,i){var n=i+1;b.className='btn'+(n==m?' on':'');b.style.background=colors[n][n==m?0:1];});}";
   html += "function send(){fetch('/set?mode='+m+'&speed='+sp.value+'&bright='+br.value);}";
@@ -610,7 +688,7 @@ void handleRoot() {
 }
 
 void handleSet() {
-  if (server.hasArg("mode")) fireMode = constrain(server.arg("mode").toInt(), 1, 8);
+  if (server.hasArg("mode")) fireMode = constrain(server.arg("mode").toInt(), 1, 9);
   if (server.hasArg("speed")) flickerSpeed = constrain(server.arg("speed").toInt(), 5, 100);
   if (server.hasArg("bright")) maxBrightness = constrain(server.arg("bright").toInt(), 10, 255);
   saveSettings();
@@ -705,7 +783,7 @@ void handleWiFiConnect() {
 void loadSettings() {
   EEPROM.begin(EEPROM_SIZE);
   if (EEPROM.read(ADDR_MAGIC) == MAGIC_VALUE) {
-    fireMode = constrain(EEPROM.read(ADDR_MODE), 1, 5);
+    fireMode = constrain(EEPROM.read(ADDR_MODE), 1, 9);
     flickerSpeed = constrain(EEPROM.read(ADDR_SPEED), 5, 100);
     maxBrightness = constrain(EEPROM.read(ADDR_BRIGHTNESS), 10, 255);
     int savedLeds = EEPROM.read(ADDR_NUM_LEDS_L) | (EEPROM.read(ADDR_NUM_LEDS_H) << 8);
@@ -873,7 +951,12 @@ void handleButton() {
   if (btnState == HIGH && !wasAdjusting) {
     if (lastClickTime > 0 && now - lastClickTime > DOUBLE_CLICK_TIME) {
       fireMode++;
-      if (fireMode > 8) fireMode = 1;
+      if (fireMode > 9) fireMode = 1;
+
+      // Применяем пресет для нового режима
+      flickerSpeed = presetSpeed[fireMode];
+      maxBrightness = presetBrightness[fireMode];
+      FastLED.setBrightness(maxBrightness);
 
       saveSettings();
       updateDisplay();

@@ -6,5 +6,4 @@
 
 # Continuous Claude cache (local only)
 .claude/cache/
-.claude/tsc-cache/85264f4e-aba0-46b8-8eda-19ee1d47633e/edited-files.log
-.claude/tsc-cache/85264f4e-aba0-46b8-8eda-19ee1d47633e/affected-repos.txt
+.claude/tsc-cache/
