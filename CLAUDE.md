@@ -17,6 +17,15 @@
 
 ## Структура проекта
 
-- `src/main.cpp` — основной код
-- `platformio.ini` — конфигурация PlatformIO и зависимости
-- `README.md` — документация проекта
+Подробная документация: **[docs/STRUCTURE.md](docs/STRUCTURE.md)**
+
+Основные файлы:
+- `src/main.cpp` — точка входа (setup/loop)
+- `src/config.h` — конфигурация, enum Mode, пресеты
+- `src/modes/` — визуальные режимы (fire, rainbow, storm, rain, tree...)
+- `src/web/` — веб-интерфейс (HTML страницы)
+- `platformio.ini` — конфигурация PlatformIO
+
+## Добавление нового режима
+
+См. секцию "Добавление нового режима" в [docs/STRUCTURE.md](docs/STRUCTURE.md)

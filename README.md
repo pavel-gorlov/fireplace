@@ -124,3 +124,7 @@ pio run -e d1_mini -t upload
 ```bash
 pio device monitor
 ```
+
+## Структура проекта
+
+Для разработчиков: **[docs/STRUCTURE.md](docs/STRUCTURE.md)** — описание файлов и модулей, инструкция по добавлению новых режимов.
