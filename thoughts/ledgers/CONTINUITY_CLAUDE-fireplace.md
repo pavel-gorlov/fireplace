@@ -71,181 +71,106 @@ Success criteria:
 
 ## Agent Reports
 
-### onboard (2026-01-08T08:23:33.051Z)
+### onboard (2026-01-08T08:58:06.434Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
 
-### onboard (2026-01-08T08:21:31.025Z)
+### onboard (2026-01-08T08:56:27.602Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
 
-### onboard (2026-01-08T08:18:40.146Z)
+### onboard (2026-01-08T08:52:39.083Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
 
-### onboard (2026-01-08T08:15:25.438Z)
+### onboard (2026-01-08T08:51:19.152Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
 
-### onboard (2026-01-08T08:13:28.124Z)
+### onboard (2026-01-08T08:49:03.348Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
 
-### onboard (2026-01-08T08:11:07.344Z)
+### onboard (2026-01-08T08:47:36.058Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
 
-### onboard (2026-01-08T08:09:28.683Z)
+### onboard (2026-01-08T08:45:30.476Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
 
-### onboard (2026-01-08T08:08:10.778Z)
+### onboard (2026-01-08T08:44:06.207Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
 
-### onboard (2026-01-08T08:07:30.112Z)
+### onboard (2026-01-08T08:40:08.297Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
 
-### onboard (2026-01-08T08:03:11.940Z)
+### onboard (2026-01-08T08:38:41.876Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
 
-### onboard (2026-01-08T07:58:46.420Z)
+### onboard (2026-01-08T08:32:44.213Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
 
-### onboard (2026-01-08T07:55:57.389Z)
+### onboard (2026-01-08T08:30:13.701Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
 
-### onboard (2026-01-08T07:48:48.435Z)
+### onboard (2026-01-08T08:30:08.147Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-08T06:58:52.110Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-07T21:13:33.182Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-07T21:08:53.004Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-07T21:05:31.874Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-07T21:03:12.814Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-07T21:01:00.809Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-07T20:54:54.353Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-07T20:53:23.724Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-07T20:51:15.817Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-07T20:47:55.858Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-07T20:47:44.556Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-07T20:44:02.338Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
-### onboard (2026-01-07T20:43:52.337Z)
-- Task: 
-- Summary: 
-- Output: `.claude/cache/agents/onboard/latest-output.md`
-
 ### onboard (2026-01-07T20:41:36.496Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
-
 ### onboard (2026-01-07T20:38:07.199Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
-
 ### onboard (2026-01-07T20:33:50.734Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
-
 ### onboard (2026-01-07T20:23:43.134Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
-
 ### onboard (2026-01-07T20:14:26.110Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
-
 ### onboard (2026-01-07T20:10:53.194Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
-
 ### onboard (2026-01-07T20:09:29.346Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
-
 ### onboard (2026-01-07T20:09:25.037Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
-
 ### onboard (2026-01-07T19:50:54.706Z)
 - Task: 
 - Summary: 
 - Output: `.claude/cache/agents/onboard/latest-output.md`
-
 ### onboard (2026-01-07T19:50:32.740Z)
 - Task: 
 - Summary: 

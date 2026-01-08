@@ -45,6 +45,7 @@ void handleWiFiConnect();
 void handleWiFiScan();
 void updateFire();
 void updateFirework();
+void updateStorm();
 byte getTargetBrightness();
 CRGB getFireColor(byte bright);
 void loadSettings();
@@ -74,7 +75,7 @@ bool screenOn = true;                 // экран включён
 #define SCREEN_TIMEOUT 30000          // мс до засыпания (30 сек)
 
 // Названия режимов
-const char* modeNames[] = {"", "Embers", "Fire", "Flame", "Ice", "Rainbow", "Firework"};
+const char* modeNames[] = {"", "Embers", "Fire", "Flame", "Ice", "Rainbow", "Firework", "Storm"};
 
 // Фейерверк: структура взрыва
 #define MAX_BURSTS 4
@@ -87,6 +88,15 @@ struct Burst {
   bool active;
 };
 Burst bursts[MAX_BURSTS];
+
+// Гроза: структура молнии
+#define MAX_LIGHTNINGS 2
+struct Lightning {
+  int path[MATRIX_SIZE];  // x-позиция на каждом уровне y
+  byte brightness;        // яркость (затухает)
+  bool active;
+};
+Lightning lightnings[MAX_LIGHTNINGS];
 
 // Иконка песочных часов 12x12
 const uint8_t icon_hourglass[] PROGMEM = {
@@ -233,6 +243,12 @@ void updateFire() {
     return;
   }
 
+  // Storm режим
+  if (fireMode == 7) {
+    updateStorm();
+    return;
+  }
+
   // Скорость изменения: чем меньше flickerSpeed, тем быстрее
   // Множитель для режима: Embers ещё медленнее
   float modeMultiplier = (fireMode == 1) ? 3.0 : (fireMode == 2) ? 1.5 : 1.0;
@@ -323,6 +339,64 @@ void updateFirework() {
   FastLED.show();
 }
 
+void updateStorm() {
+  int fadeSpeed = map(flickerSpeed, 100, 5, 8, 25);
+
+  // Тёмно-синий фон
+  for (int i = 0; i < numLeds; i++) {
+    leds[i] = CHSV(160, 255, 25);  // тёмно-синий
+  }
+
+  // Обновляем активные молнии
+  int activeLightnings = 0;
+  for (int l = 0; l < MAX_LIGHTNINGS; l++) {
+    if (!lightnings[l].active) continue;
+    activeLightnings++;
+
+    // Уменьшаем яркость
+    lightnings[l].brightness = lightnings[l].brightness > fadeSpeed ? lightnings[l].brightness - fadeSpeed : 0;
+
+    if (lightnings[l].brightness < 20) {
+      lightnings[l].active = false;
+      continue;
+    }
+
+    // Рисуем молнию (сверху вниз = по X)
+    for (int x = 0; x < MATRIX_SIZE; x++) {
+      int y = lightnings[l].path[x];
+      if (y >= 0 && y < MATRIX_SIZE) {
+        int idx = y * MATRIX_SIZE + x;
+        if (idx >= 0 && idx < numLeds) {
+          // Жёлтая молния
+          leds[idx] = CHSV(40, 200, lightnings[l].brightness);
+        }
+      }
+    }
+  }
+
+  // Создаём новые молнии (редко)
+  if (activeLightnings < MAX_LIGHTNINGS && random8() < map(flickerSpeed, 100, 5, 3, 15)) {
+    for (int l = 0; l < MAX_LIGHTNINGS; l++) {
+      if (!lightnings[l].active) {
+        // Генерируем путь молнии сверху вниз (по X, отклонение по Y)
+        int y = random8(MATRIX_SIZE);
+        for (int x = 0; x < MATRIX_SIZE; x++) {
+          lightnings[l].path[x] = y;
+          // Случайное отклонение вверх/вниз
+          int shift = random8(3) - 1;  // -1, 0, или 1
+          y = constrain(y + shift, 0, MATRIX_SIZE - 1);
+        }
+        lightnings[l].brightness = 255;
+        lightnings[l].active = true;
+        break;
+      }
+    }
+  }
+
+  FastLED.setBrightness(maxBrightness);
+  FastLED.show();
+}
+
 byte getTargetBrightness() {
   switch (fireMode) {
     case 1: return random8(20, 120);   // Embers: тусклые угли
@@ -331,6 +405,7 @@ byte getTargetBrightness() {
     case 4: return random8(30, 255);   // Ice: ледяное пламя
     case 5: return 255;                // Rainbow: полная яркость
     case 6: return 255;                // Firework: полная яркость
+    case 7: return 255;                // Storm: полная яркость
     default: return random8(40, 200);
   }
 }
@@ -387,6 +462,7 @@ void handleRoot() {
   html += "<button class='btn" + String(fireMode==5?" on":"") + "' onclick='setMode(5)' style='background:" + String(fireMode==5?"linear-gradient(90deg,red,orange,yellow,green,blue,violet)":"linear-gradient(90deg,#633,#663,#363,#336,#636)") + "'>Rainbow</button>";
   html += "</div><div class='btns' style='margin-top:10px'>";
   html += "<button class='btn" + String(fireMode==6?" on":"") + "' onclick='setMode(6)' style='background:" + String(fireMode==6?"linear-gradient(135deg,#ff0066,#ffcc00,#00ffcc,#ff00ff)":"linear-gradient(135deg,#633,#653,#356,#636)") + "'>Firework</button>";
+  html += "<button class='btn" + String(fireMode==7?" on":"") + "' onclick='setMode(7)' style='background:" + String(fireMode==7?"linear-gradient(180deg,#001133,#ffff00,#001133)":"linear-gradient(180deg,#223,#553,#223)") + "'>Storm</button>";
   html += "</div></div>";
 
   html += "<div class='box'>Update interval: <span id='sv'>" + String(flickerSpeed) + "</span> ms<br>";
@@ -402,8 +478,8 @@ void handleRoot() {
   html += "<button class='btn' style='background:#ff6600;margin-top:10px' onclick='setLeds()'>Apply & Restart</button></div>";
 
   html += "<script>var m=" + String(fireMode) + ";";
-  html += "var presets={1:{s:70,b:70},2:{s:30,b:150},3:{s:5,b:255},4:{s:10,b:200},5:{s:20,b:255},6:{s:30,b:255}};";
-  html += "var colors={1:['#aa2200','#522'],2:['#ff6600','#633'],3:['#ff9922','#653'],4:['#0099ff','#446'],5:['linear-gradient(90deg,red,orange,yellow,green,blue,violet)','linear-gradient(90deg,#633,#663,#363,#336,#636)'],6:['linear-gradient(135deg,#ff0066,#ffcc00,#00ffcc,#ff00ff)','linear-gradient(135deg,#633,#653,#356,#636)']};";
+  html += "var presets={1:{s:70,b:70},2:{s:30,b:150},3:{s:5,b:255},4:{s:10,b:200},5:{s:20,b:255},6:{s:30,b:255},7:{s:50,b:200}};";
+  html += "var colors={1:['#aa2200','#522'],2:['#ff6600','#633'],3:['#ff9922','#653'],4:['#0099ff','#446'],5:['linear-gradient(90deg,red,orange,yellow,green,blue,violet)','linear-gradient(90deg,#633,#663,#363,#336,#636)'],6:['linear-gradient(135deg,#ff0066,#ffcc00,#00ffcc,#ff00ff)','linear-gradient(135deg,#633,#653,#356,#636)'],7:['linear-gradient(180deg,#001133,#ffff00,#001133)','linear-gradient(180deg,#223,#553,#223)']};";
   html += "function setMode(n){m=n;sp.value=presets[n].s;br.value=presets[n].b;sv.innerText=presets[n].s;bv.innerText=presets[n].b;upd();send();}";
   html += "function upd(){document.querySelectorAll('.btns .btn').forEach(function(b,i){var n=i+1;b.className='btn'+(n==m?' on':'');b.style.background=colors[n][n==m?0:1];});}";
   html += "function send(){fetch('/set?mode='+m+'&speed='+sp.value+'&bright='+br.value);}";
@@ -415,7 +491,7 @@ void handleRoot() {
 }
 
 void handleSet() {
-  if (server.hasArg("mode")) fireMode = constrain(server.arg("mode").toInt(), 1, 6);
+  if (server.hasArg("mode")) fireMode = constrain(server.arg("mode").toInt(), 1, 7);
   if (server.hasArg("speed")) flickerSpeed = constrain(server.arg("speed").toInt(), 5, 100);
   if (server.hasArg("bright")) maxBrightness = constrain(server.arg("bright").toInt(), 10, 255);
   saveSettings();
@@ -678,7 +754,7 @@ void handleButton() {
   if (btnState == HIGH && !wasAdjusting) {
     if (lastClickTime > 0 && now - lastClickTime > DOUBLE_CLICK_TIME) {
       fireMode++;
-      if (fireMode > 6) fireMode = 1;
+      if (fireMode > 7) fireMode = 1;
 
       saveSettings();
       updateDisplay();
