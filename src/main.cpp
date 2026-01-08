@@ -67,6 +67,11 @@ bool wasAdjusting = false;            // флаг что была регулир
 #define ADJUST_INTERVAL 50            // мс между шагами (медленнее)
 #define DOUBLE_CLICK_TIME 300         // мс между кликами
 
+// Засыпание экрана
+unsigned long lastActivityTime = 0;   // время последней активности
+bool screenOn = true;                 // экран включён
+#define SCREEN_TIMEOUT 30000          // мс до засыпания (30 сек)
+
 // Названия режимов
 const char* modeNames[] = {"", "Embers", "Fire", "Flame", "Ice", "Rainbow"};
 
@@ -169,6 +174,7 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   updateDisplay();
+  lastActivityTime = millis();  // Запуск таймера засыпания экрана
 
   server.on("/", handleRoot);
   server.on("/set", handleSet);
@@ -182,6 +188,13 @@ void setup() {
 void loop() {
   server.handleClient();
   handleButton();
+
+  // Засыпание экрана по таймауту
+  if (screenOn && millis() - lastActivityTime > SCREEN_TIMEOUT) {
+    display.displayOff();
+    screenOn = false;
+    Serial.println("Screen off");
+  }
 
   if (millis() - lastUpdate > UPDATE_INTERVAL) {
     lastUpdate = millis();
@@ -463,6 +476,19 @@ void handleButton() {
 
   // Нажатие кнопки (HIGH -> LOW)
   if (btnState == LOW && lastBtnState == HIGH) {
+    // Если экран выключен - просто включаем его и выходим
+    if (!screenOn) {
+      display.displayOn();
+      screenOn = true;
+      lastActivityTime = now;
+      lastBtnState = btnState;
+      Serial.println("Screen wake up");
+      return;
+    }
+
+    // Сброс таймера засыпания при активности
+    lastActivityTime = now;
+
     btnPressTime = now;
     wasAdjusting = false;
 
